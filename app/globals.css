@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #030305;
+  --foreground: #ffffff;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Glass Utilities */
+.glass-card {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10;
+}
+
+.glass-panel {
+  @apply bg-[#0A0A0A]/80 backdrop-blur-md border border-white/5;
+}
+
+/* Button Utilities - FORCED STYLING */
+.btn-glow {
+  @apply bg-white text-black transition-all duration-300 shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] hover:bg-zinc-200;
+  
+  /* Force Font Settings */
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em; /* tracking-widest */
+  font-size: 0.75rem;    /* text-xs */
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+}
+
+.btn-ghost {
+  @apply bg-transparent text-white border border-white/10 hover:bg-white/5 transition-colors;
+  
+  /* Force Font Settings */
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+}
