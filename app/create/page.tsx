@@ -254,7 +254,7 @@ export default function CreatePage() {
             <h1 className="text-3xl font-mono uppercase font-normal tracking-tight text-white mb-3 text-center">Initialize Protocol</h1>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,1)] animate-pulse"></div>
-                <span className="text-blue-400 font-mono text-[10px] uppercase tracking-wider">Target: {chain?.name || "Base Sepolia"}</span>
+                <span className="text-blue-400 font-mono text-[10px] uppercase tracking-wider">Target: {chain?.name || "Not Connected"}</span>
             </div>
         </div>
 
