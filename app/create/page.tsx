@@ -163,7 +163,7 @@ export default function CreatePage() {
                 abi: CONTRACT_ABI,
                 functionName: 'lockToken',
                 args: [tokenAddress as `0x${string}`, totalAmountWei, BigInt(unlockTimestamp)],
-                value: parseEther("0.05"),
+                value: parseEther("0.03"),
             });
             setTxHash(hash);
             setIsSuccessScreen(true);
@@ -421,7 +421,7 @@ export default function CreatePage() {
                        <><Loader2 className="animate-spin" size={16} /> Signing {currentBatchIndex}/{batchItems.length}...</>
                   ) : actionType === 'lock' && isBusy ? (
                        <><Loader2 className="animate-spin" size={16} />{isTxConfirming ? "Securing Protocol..." : "Sign in Wallet..."}</>
-                  ) : (`2. Initialize ${activeTab === 'lock' ? 'Lock (0.05 ETH)' : isBatchMode ? `Batch (${(0.02 * batchItems.length).toFixed(2)} ETH)` : 'Vesting (0.02 ETH)'}`)}
+                  ) : (`2. Initialize ${activeTab === 'lock' ? 'Lock (0.03 ETH)' : isBatchMode ? `Batch (${(0.02 * batchItems.length).toFixed(2)} ETH)` : 'Vesting (0.02 ETH)'}`)}
                </button>
 
                {isTimeParadox && <p className="text-red-400 text-xs font-mono uppercase tracking-widest mt-3 text-center">Error: Time Paradox Detected</p>}
