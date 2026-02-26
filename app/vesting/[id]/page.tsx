@@ -9,7 +9,6 @@ import { erc20Abi, formatUnits } from "viem";
 import { Loader2, TrendingUp, CheckCircle2, Copy, Twitter, Code, ExternalLink, AlertTriangle, ChevronUp, ChevronDown } from "lucide-react";
 import { useState } from "react";
 
-// Helper for Network Name
 const getNetworkName = (chainId: number) => {
     const names: Record<number, string> = {
         84532: "Base Sepolia",
@@ -25,14 +24,6 @@ export default function VestingCertificatePage() {
   const { address, chain } = useAccount();
   const { switchChain } = useSwitchChain();
   
-  const [isCopied, setIsCopied] = useState(false);
-  const [isEmbedCopied, setIsEmbedCopied] = useState(false);
-  
-  // ACTION STATES
-  const [transferAddress, setTransferAddress] = useState("");
-  const [activeAction, setActiveAction] = useState<'none' | 'transfer'>('none');
-
-  // 1. PARSE ID & CHAIN
   let rawId = BigInt(0);
   let targetChainId = 84532;
   try {
@@ -42,8 +33,12 @@ export default function VestingCertificatePage() {
   } catch (e) { console.error(e); }
 
   const activeContract = CONTRACT_ADDRESSES[targetChainId];
+  const [isCopied, setIsCopied] = useState(false);
+  const [isEmbedCopied, setIsEmbedCopied] = useState(false);
+  
+  const [transferAddress, setTransferAddress] = useState("");
+  const [activeAction, setActiveAction] = useState<'none' | 'transfer'>('none');
 
-  // 2. FETCH DATA
   const { data: vest, isLoading, refetch } = useReadContract({
     address: activeContract,
     abi: CONTRACT_ABI,
@@ -52,34 +47,33 @@ export default function VestingCertificatePage() {
     chainId: targetChainId,
   });
 
+  const tokenAddress = vest ? vest[0] : undefined;
+
   const { data: tokenData } = useReadContracts({
     contracts: [
-      { address: vest?.[1], abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
-      { address: vest?.[1], abi: erc20Abi, functionName: 'decimals', chainId: targetChainId },
+      { address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
     ],
-    query: { enabled: !!vest }
+    query: { enabled: !!tokenAddress }
   });
 
   const { writeContract, data: txHash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
-  
+  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
   if (isSuccess) refetch();
 
   if (isLoading || !vest) return <div className="min-h-screen bg-[#030305] flex items-center justify-center"><Loader2 className="animate-spin text-white" /></div>;
 
-  // --- V6/V8 DATA MAPPING ---
+  // V11 MAPPING: token(0), total(1), owner(2), decimals(3), claimed(4), start(5), cliff(6), duration(7)
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
-  const decimals = Number(tokenData?.[1]?.result || vest[2] || 18);
-  const totalAmount = Number(formatUnits(vest[4], decimals));
-  const claimedAmount = Number(formatUnits(vest[5], decimals));
-  const startTime = Number(vest[6]);
-  const cliffDuration = Number(vest[7]);
-  const duration = Number(vest[8]);
+  const decimals = Number(vest[3] || 18);
+  const totalAmount = Number(formatUnits(vest[1], decimals));
+  const claimedAmount = Number(formatUnits(vest[4], decimals));
+  const startTime = Number(vest[5]);
+  const cliffDuration = Number(vest[6]);
+  const duration = Number(vest[7]);
   
   const absoluteEndTime = startTime + cliffDuration + duration;
   const now = Math.floor(Date.now() / 1000);
   
-  // Calc Claimable
   let claimableNow = 0;
   if (now > startTime + cliffDuration) {
       const timePassedSinceCliff = now - (startTime + cliffDuration);
@@ -97,10 +91,9 @@ export default function VestingCertificatePage() {
   const timeElapsedTotal = Math.max(0, now - startTime);
   const percentTime = Math.min(100, (timeElapsedTotal / totalDuration) * 100);
 
-  const isOwner = address === vest[3];
+  const isOwner = address === vest[2];
   const isCompleted = claimedAmount >= totalAmount;
 
-  // SMART HANDLER WRAPPER
   const executeAction = (action: () => void) => {
     if (chain?.id !== targetChainId) {
         if (confirm(`Switch network to ${getNetworkName(targetChainId)}?`)) {
@@ -119,7 +112,6 @@ export default function VestingCertificatePage() {
     writeContract({ address: activeContract, abi: CONTRACT_ABI, functionName: 'transferVestingOwnership', args: [rawId, transferAddress as `0x${string}`] });
   });
 
-  // Share Handlers
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setIsCopied(true);
@@ -133,13 +125,7 @@ export default function VestingCertificatePage() {
   };
 
   const handleEmbed = () => {
-    const embedCode = `<iframe 
-  src="${window.location.origin}/embed/vesting/${id}" 
-  width="100%" 
-  height="220" 
-  style="max-width: 400px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;" 
-  frameborder="0"
-></iframe>`;
+    const embedCode = `<iframe src="${window.location.origin}/embed/vesting/${id}" width="100%" height="220" style="max-width: 400px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;" frameborder="0"></iframe>`;
     navigator.clipboard.writeText(embedCode);
     setIsEmbedCopied(true);
     setTimeout(() => setIsEmbedCopied(false), 2000);
@@ -152,15 +138,12 @@ export default function VestingCertificatePage() {
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-12">
          <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-                <div className="bg-blue-500/10 p-2 rounded-lg">
-                    <TrendingUp className="text-blue-400" size={24} />
-                </div>
+                <div className="bg-blue-500/10 p-2 rounded-lg"><TrendingUp className="text-blue-400" size={24} /></div>
                 <h1 className="text-xl md:text-2xl font-mono uppercase text-white">Vesting Schedule #{id}</h1>
             </div>
             <p className="text-zinc-500 font-mono text-xs uppercase tracking-widest">Linear Token Release Protocol</p>
         </div>
 
-        {/* MAIN CARD (Same as before...) */}
         <div className="glass-card rounded-2xl p-6 md:p-8 mb-4 relative">
             <div className="absolute top-4 right-4 md:top-6 md:right-6">
                 <div className="flex items-center gap-2 bg-black/40 px-2 py-1 md:px-3 md:py-1.5 rounded-full border border-white/5 backdrop-blur-md">
@@ -198,11 +181,8 @@ export default function VestingCertificatePage() {
                     <p className="text-2xl font-mono text-white">{claimableNow.toLocaleString(undefined, { maximumFractionDigits: 4 })}</p>
                     <p className="text-zinc-500 font-mono text-xs mt-1">{tokenSymbol}</p>
                 </div>
-                
                 {isOwner && !isCompleted && (
-                    <button onClick={handleClaim} disabled={claimableNow <= 0 || isPending} className="w-full md:w-auto btn-glow disabled:opacity-50 disabled:cursor-not-allowed">
-                        {isPending ? <Loader2 className="animate-spin" /> : "Claim Tokens"}
-                    </button>
+                    <button onClick={handleClaim} disabled={claimableNow <= 0 || isPending} className="w-full md:w-auto btn-glow disabled:opacity-50 disabled:cursor-not-allowed">{isPending ? <Loader2 className="animate-spin" /> : "Claim Tokens"}</button>
                 )}
                 {isCompleted && <div className="px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-mono uppercase rounded-lg">Vesting Complete</div>}
             </div>
@@ -210,15 +190,15 @@ export default function VestingCertificatePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-xs font-mono border-t border-white/5 pt-8">
                 <div>
                     <p className="text-zinc-500 uppercase tracking-widest mb-1">Beneficiary</p>
-                    <a href={`https://sepolia.basescan.org/address/${vest[3]}`} target="_blank" rel="noreferrer" className="text-zinc-300 hover:text-white transition-colors break-all flex items-center gap-2 group">
-                        {vest[3]}
+                    <a href={`https://sepolia.basescan.org/address/${vest[2]}`} target="_blank" rel="noreferrer" className="text-zinc-300 hover:text-white transition-colors break-all flex items-center gap-2 group">
+                        {vest[2]}
                         <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                 </div>
                 <div>
                     <p className="text-zinc-500 uppercase tracking-widest mb-1">Token Contract</p>
-                    <a href={`https://sepolia.basescan.org/token/${vest[1]}`} target="_blank" rel="noreferrer" className="text-zinc-300 hover:text-white transition-colors break-all flex items-center gap-2 group">
-                        {vest[1]}
+                    <a href={`https://sepolia.basescan.org/token/${vest[0]}`} target="_blank" rel="noreferrer" className="text-zinc-300 hover:text-white transition-colors break-all flex items-center gap-2 group">
+                        {vest[0]}
                         <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                 </div>
@@ -240,7 +220,6 @@ export default function VestingCertificatePage() {
             </div>
         </div>
 
-        {/* VERIFIED BADGE */}
         <div className="flex justify-center mb-10">
             <a href={`https://sepolia.basescan.org/address/${activeContract}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity cursor-pointer group">
                 <CheckCircle2 size={14} className="text-purple-500 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all" />
@@ -249,61 +228,12 @@ export default function VestingCertificatePage() {
             </a>
         </div>
 
-        {/* OWNER CONTROLS (NEW V8 FEATURE) */}
-        {isOwner && !isCompleted && (
-            <div className="space-y-4">
-                <h3 className="font-mono uppercase text-sm text-zinc-500 tracking-widest mb-4">Owner Controls</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Transfer Button */}
-                    <button 
-                        onClick={() => setActiveAction(activeAction === 'transfer' ? 'none' : 'transfer')}
-                        className="btn-ghost flex items-center justify-center gap-2"
-                    >
-                        <span>Transfer Ownership</span>
-                        {activeAction === 'transfer' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                </div>
-
-                {/* TRANSFER FORM */}
-                {activeAction === 'transfer' && (
-                    <div className="glass-panel p-6 rounded-xl animate-in fade-in slide-in-from-top-2 border-l-4 border-l-red-500">
-                        <div className="flex items-center gap-2 text-red-400 mb-2">
-                            <AlertTriangle size={16} />
-                            <p className="font-mono uppercase text-xs font-bold">Warning: Irreversible Action</p>
-                        </div>
-                        <p className="text-xs font-mono uppercase tracking-wide text-zinc-300 mb-4">
-                            Permanently transfer control of the remaining vesting schedule to a new wallet.
-                        </p>
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <input 
-                                type="text" 
-                                placeholder="0x..." 
-                                className="bg-black/50 border border-white/10 rounded-lg p-3 text-white font-mono flex-1 text-sm" 
-                                onChange={(e) => setTransferAddress(e.target.value)} 
-                            />
-                            <button 
-                                onClick={handleTransfer} 
-                                disabled={isPending} 
-                                className="btn-ghost bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20"
-                            >
-                                {isPending ? <Loader2 className="animate-spin"/> : "Transfer"}
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        )}
-
         {/* TRUST AMPLIFIER */}
         <div className="mb-10 p-6 border border-white/5 rounded-xl bg-white/[0.02]">
             <h3 className="font-mono uppercase text-xs text-zinc-500 tracking-widest mb-4">Protocol Guarantees</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle2 size={14} className="text-green-400" />
-                        <span className="text-sm font-medium text-white font-mono">What this proves</span>
-                    </div>
+                    <div className="flex items-center gap-2 mb-2"><CheckCircle2 size={14} className="text-green-400" /><span className="text-sm font-medium text-white font-mono">What this proves</span></div>
                     <ul className="font-mono text-xs text-zinc-400 space-y-2 ml-6 list-disc marker:text-green-900">
                         <li>Tokens are vesting according to an immutable schedule.</li>
                         <li>Claiming is mathematically enforced by the contract.</li>
@@ -311,10 +241,7 @@ export default function VestingCertificatePage() {
                     </ul>
                 </div>
                 <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <AlertTriangle size={14} className="text-orange-400" />
-                        <span className="text-sm font-medium text-white font-mono">What this does NOT prove</span>
-                    </div>
+                    <div className="flex items-center gap-2 mb-2"><AlertTriangle size={14} className="text-orange-400" /><span className="text-sm font-medium text-white font-mono">What this does NOT prove</span></div>
                     <ul className="font-mono text-xs text-zinc-400 space-y-2 ml-6 list-disc marker:text-orange-900">
                         <li>This does not guarantee the token has value.</li>
                         <li>This does not prevent the team from selling other unlocked wallets.</li>
@@ -323,6 +250,31 @@ export default function VestingCertificatePage() {
                 </div>
             </div>
         </div>
+
+        {/* OWNER CONTROLS (TRANSFER ONLY) */}
+        {isOwner && !isCompleted && (
+            <div className="space-y-4">
+                <h3 className="font-mono uppercase text-sm text-zinc-500 tracking-widest mb-4">Owner Controls</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onClick={() => setActiveAction(activeAction === 'transfer' ? 'none' : 'transfer')} className="btn-ghost flex items-center justify-center gap-2">
+                        <span>Transfer Ownership</span>
+                        {activeAction === 'transfer' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                </div>
+
+                {activeAction === 'transfer' && (
+                    <div className="glass-panel p-6 rounded-xl animate-in fade-in slide-in-from-top-2 border-l-4 border-l-red-500">
+                        <div className="flex items-center gap-2 text-red-400 mb-2"><AlertTriangle size={16} /><p className="font-mono uppercase text-xs font-bold">Warning: Irreversible Action</p></div>
+                        <p className="text-xs font-mono uppercase tracking-wide text-zinc-300 mb-4">Permanently transfer control of vesting to a new wallet.</p>
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <input type="text" placeholder="0x..." className="bg-black/50 border border-white/10 rounded-lg p-3 text-white font-mono flex-1 text-sm" onChange={(e) => setTransferAddress(e.target.value)} />
+                            <button onClick={handleTransfer} disabled={isPending} className="btn-ghost bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20">{isPending ? <Loader2 className="animate-spin"/> : "Transfer"}</button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
 
       </div>
     </main>

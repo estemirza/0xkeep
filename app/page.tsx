@@ -2,13 +2,14 @@
 
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Lock, Loader2, ChevronLeft, ChevronRight, Search, Download, Filter, ArrowUpDown } from "lucide-react";
-import { useAccount, useReadContract, usePublicClient } from "wagmi";
+import { useAccount, useReadContract, usePublicClient, useReadContracts } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { LockRow, VestingRow } from "@/components/DashboardRows";
 import { useLabels } from "@/hooks/useLabels";
 import { formatLockId, formatVestingId } from "@/lib/formatter";
+import { formatUnits } from "viem";
 
 // Helper
 const getContractAddress = (chainId?: number) => {
@@ -31,8 +32,8 @@ export default function Dashboard() {
 
   // --- SEARCH & FILTER STATE ---
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  // UPDATED: Added 'unlabeled' type
+  // UPDATED: Added highest/lowest
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
   const [filterType, setFilterType] = useState<'all' | 'labeled' | 'unlabeled'>('all');
   
   // --- PAGINATION STATE ---
@@ -57,40 +58,76 @@ export default function Dashboard() {
     query: { enabled: !!address && activeTab === 'vesting' }
   });
 
-  // --- FILTERING LOGIC ---
+  // 2. Prepare Unique IDs
   const rawIds = activeTab === 'locks' ? lockIds : vestingIds;
-  const isLoading = activeTab === 'locks' ? locksLoading : vestingLoading;
+  const idsLoading = activeTab === 'locks' ? locksLoading : vestingLoading;
+  const uniqueIds = useMemo(() => rawIds ? Array.from(new Set(rawIds)) : [], [rawIds]);
 
-  // 1. Deduplicate & Initial Sort
-  const uniqueIds = rawIds ? Array.from(new Set(rawIds)) : [];
-  
-  // 2. Apply Sorting
-  const sortedIds = sortOrder === 'newest' ? uniqueIds.reverse() : uniqueIds;
-
-  // 3. Apply Filters
-  const filteredIds = sortedIds.filter(id => {
-      const chainId = chain?.id || 84532;
-      const fancyId = activeTab === 'locks' ? formatLockId(id, chainId) : formatVestingId(id, chainId);
-      const label = labels[fancyId] || "";
-
-      // Filter: Labeled Only
-      if (filterType === 'labeled' && !label) return false;
-
-      // Filter: Unlabeled Only (NEW)
-      if (filterType === 'unlabeled' && label) return false;
-
-      // Filter: Search Query
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return fancyId.toLowerCase().includes(query) || label.toLowerCase().includes(query);
+  // 3. NEW: Batch Fetch Data for Sorting (Amount)
+  // We need to fetch the struct for every ID to sort by amount. 
+  // Since user lists aren't massive (usually < 100), this is performant enough.
+  const { data: rowData } = useReadContracts({
+    contracts: uniqueIds.map(id => ({
+        address: activeContract,
+        abi: CONTRACT_ABI,
+        functionName: activeTab === 'locks' ? 'locks' : 'vestings',
+        args: [id],
+        chainId: chain?.id
+    })),
+    query: { enabled: uniqueIds.length > 0 }
   });
 
+  // --- FILTERING & SORTING LOGIC ---
+  const processedIds = useMemo(() => {
+      // Create an array of objects to sort: { id, amount }
+      const mapped = uniqueIds.map((id, index) => {
+          const data = rowData?.[index]?.result as any; // Type 'any' used because structs differ but indices align here
+          // V11 Structs: 
+          // Lock: amount is index [1], decimals [3]
+          // Vest: totalAmount is index [1], decimals [3]
+          let normalizedAmount = 0;
+          
+          if (data) {
+              const rawAmount = data[1] || BigInt(0);
+              const decimals = data[3] || 18;
+              normalizedAmount = Number(formatUnits(rawAmount, decimals));
+          }
+          
+          return { id, normalizedAmount };
+      });
+
+      // Filter
+      const filtered = mapped.filter(item => {
+          const chainId = chain?.id || 84532;
+          const fancyId = activeTab === 'locks' ? formatLockId(item.id, chainId) : formatVestingId(item.id, chainId);
+          const label = labels[fancyId] || "";
+
+          if (filterType === 'labeled' && !label) return false;
+          if (filterType === 'unlabeled' && label) return false;
+
+          if (!searchQuery) return true;
+          const query = searchQuery.toLowerCase();
+          return fancyId.toLowerCase().includes(query) || label.toLowerCase().includes(query);
+      });
+
+      // Sort
+      filtered.sort((a, b) => {
+          if (sortOrder === 'newest') return Number(b.id - a.id); // Higher ID = Newer
+          if (sortOrder === 'oldest') return Number(a.id - b.id);
+          if (sortOrder === 'highest') return b.normalizedAmount - a.normalizedAmount;
+          if (sortOrder === 'lowest') return a.normalizedAmount - b.normalizedAmount;
+          return 0;
+      });
+
+      return filtered.map(item => item.id);
+  }, [uniqueIds, rowData, searchQuery, filterType, sortOrder, activeTab, chain?.id, labels]);
+
   // 4. Pagination Slice
-  const totalItems = filteredIds.length;
+  const totalItems = processedIds.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentIds = filteredIds.slice(startIndex, endIndex);
+  const currentIds = processedIds.slice(startIndex, endIndex);
 
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1); }, [activeTab, itemsPerPage, searchQuery, sortOrder, filterType]);
@@ -119,9 +156,9 @@ export default function Dashboard() {
                 args: [id]
             });
             
-            const token = data[1];
-            const amount = data[4]; 
-            const dateVal = activeTab === 'locks' ? data[5] : (Number(data[6]) + Number(data[7]) + Number(data[8])); 
+            const token = data[0]; // V11 Index 0
+            const amount = data[1]; // V11 Index 1
+            const dateVal = activeTab === 'locks' ? data[5] : (Number(data[5]) + Number(data[6]) + Number(data[7])); // End Date
             
             const dateStr = new Date(Number(dateVal) * 1000).toISOString().split('T')[0];
             const status = "Active"; 
@@ -212,7 +249,7 @@ export default function Dashboard() {
                     >
                         <option value="all">All Items</option>
                         <option value="labeled">Labeled Only</option>
-                        <option value="unlabeled">Unlabeled Only</option> {/* NEW OPTION */}
+                        <option value="unlabeled">Unlabeled Only</option>
                     </select>
                     <Filter size={14} className="absolute left-3 top-2.5 text-zinc-500 pointer-events-none" />
                     <ChevronDownIcon className="absolute right-3 top-2.5 text-zinc-500 pointer-events-none w-3 h-3" />
@@ -227,6 +264,8 @@ export default function Dashboard() {
                     >
                         <option value="newest">Newest First</option>
                         <option value="oldest">Oldest First</option>
+                        <option value="highest">Highest Amount</option>
+                        <option value="lowest">Lowest Amount</option>
                     </select>
                     <ArrowUpDown size={14} className="absolute left-3 top-2.5 text-zinc-500 pointer-events-none" />
                     <ChevronDownIcon className="absolute right-3 top-2.5 text-zinc-500 pointer-events-none w-3 h-3" />
@@ -264,14 +303,14 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div>
-                      {isLoading ? (
+                      {idsLoading ? (
                           <div className="p-12 flex justify-center text-zinc-500"><Loader2 className="animate-spin" /></div>
                       ) : null}
 
                       {activeTab === 'locks' && currentIds.map((id) => <LockRow key={id} lockId={id} />)}
                       {activeTab === 'vesting' && currentIds.map((id) => <VestingRow key={id} vestingId={id} />)}
 
-                      {!isLoading && filteredIds.length === 0 && (
+                      {!idsLoading && processedIds.length === 0 && (
                           <div className="p-12 text-center text-zinc-500 font-mono uppercase tracking-widest text-xs">
                             {searchQuery ? "No matches found." : (filterType !== 'all' ? `No ${filterType} ${activeTab} found.` : `No active ${activeTab} found.`)}
                           </div>
@@ -282,7 +321,7 @@ export default function Dashboard() {
           </div>
 
           {/* PAGINATION */}
-          {isConnected && filteredIds.length > 0 && (
+          {isConnected && processedIds.length > 0 && (
             <div className="border-t border-white/5 bg-white/[0.02] p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                <div className="flex items-center gap-3">
                   <span className="text-zinc-500 font-mono text-xs uppercase tracking-widest">Rows:</span>

@@ -20,8 +20,9 @@ const getNetworkName = (chainId: number) => {
 };
 
 export default function LockEmbed() {
-  const { id } = useParams(); 
+  const { id } = useParams(); // e.g. "0xK-BS-101"
   
+  // 1. PARSE ID & CHAIN
   let rawId = BigInt(0);
   let targetChainId = 84532;
   try {
@@ -32,6 +33,7 @@ export default function LockEmbed() {
 
   const activeContract = CONTRACT_ADDRESSES[targetChainId];
 
+  // 2. FETCH DATA (Force Chain)
   const { data: lock, isLoading } = useReadContract({
     address: activeContract,
     abi: CONTRACT_ABI,
@@ -40,19 +42,21 @@ export default function LockEmbed() {
     chainId: targetChainId,
   });
 
+  // V11 MAPPING: token(0), amount(1), owner(2), decimals(3), withdrawn(4), unlockTime(5)
+  const tokenAddress = lock ? lock[0] : undefined;
+
   const { data: tokenData } = useReadContracts({
     contracts: [
-      { address: lock?.[1], abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
-      { address: lock?.[1], abi: erc20Abi, functionName: 'decimals', chainId: targetChainId },
+      { address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
     ],
-    query: { enabled: !!lock }
+    query: { enabled: !!tokenAddress }
   });
 
   if (isLoading || !lock) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-white" /></div>;
 
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
-  const decimals = Number(tokenData?.[1]?.result || lock[2] || 18);
-  const amount = Number(formatUnits(lock[4], decimals)).toLocaleString();
+  const decimals = Number(lock[3] || 18);
+  const amount = Number(formatUnits(lock[1], decimals)).toLocaleString();
   const unlockDate = new Date(Number(lock[5]) * 1000);
   const isUnlocked = Date.now() > unlockDate.getTime();
 
@@ -60,10 +64,7 @@ export default function LockEmbed() {
     <a 
       href={`${window.location.origin}/lock/${id}`} 
       target="_blank" 
-      // HOVER EFFECTS ADDED HERE:
-      // hover:border-purple-500/30 -> Border turns purple
-      // hover:shadow-[0_0_30px_rgba(124,58,237,0.15)] -> Purple blurred glow behind card
-      // hover:-translate-y-1 -> Slight lift up
+      // HOVER EFFECTS: Purple Shadow, Border Glow, Lift
       className="flex flex-col w-full h-full bg-[#030305] border border-white/10 text-white font-sans decoration-0 cursor-pointer group relative overflow-hidden transition-all duration-500 ease-out hover:border-purple-500/30 hover:shadow-[0_0_40px_rgba(124,58,237,0.15)] hover:-translate-y-1"
     >
       {/* Background Gradient - Brightens on Hover */}
@@ -103,7 +104,7 @@ export default function LockEmbed() {
       <div className="px-5 py-3 border-t border-white/5 bg-white/[0.01] flex items-center justify-between relative z-10 group-hover:bg-white/[0.03] transition-colors">
         <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
             <CheckCircle2 size={10} className="text-purple-500" />
-            <span className="font-mono text-[8px] uppercase tracking-widest text-zinc-400 group-hover:text-zinc-300">Verified by 0xKeep Protocol</span>
+            <span className="font-mono text-[8px] uppercase tracking-widest text-zinc-400 group-hover:text-zinc-300">Verified Protocol</span>
         </div>
         <ExternalLink size={10} className="text-zinc-600 group-hover:text-white transition-colors" />
       </div>

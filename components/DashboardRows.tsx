@@ -9,7 +9,7 @@ import Link from "next/link";
 import { formatLockId, formatVestingId } from "@/lib/formatter";
 import { useLabels } from "@/hooks/useLabels";
 import { formatDistanceToNow } from "date-fns";
-import { useTokenPrice } from "@/hooks/useTokenPrice"; // NEW IMPORT
+import { useTokenPrice } from "@/hooks/useTokenPrice";
 
 const shortAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
@@ -18,7 +18,7 @@ const getContractAddress = (chainId?: number) => {
 };
 
 const NetworkBadge = ({ chainId }: { chainId?: number }) => {
-  const name = chainId === 84532 ? "Base Sepolia" : "Unknown";
+  const name = chainId === 84532 ? "Base Sepolia" : "Unknown"; // You can map other IDs here
   return (
     <div className="flex items-center gap-2">
       <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
@@ -37,12 +37,6 @@ const EditableLabel = ({ id, currentLabel, onSave }: { id: string, currentLabel:
         e.stopPropagation();
         onSave(val);
         setIsEditing(false);
-    };
-
-    const handleEditClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsEditing(true);
     };
 
     if (isEditing) {
@@ -68,7 +62,7 @@ const EditableLabel = ({ id, currentLabel, onSave }: { id: string, currentLabel:
                 {currentLabel || id}
             </span>
             <button 
-                onClick={handleEditClick}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditing(true); }}
                 className={`text-zinc-600 hover:text-zinc-300 transition-colors ${currentLabel ? 'opacity-0 group-hover/label:opacity-100' : 'opacity-100'}`}
             >
                 <Pencil size={10} />
@@ -76,7 +70,6 @@ const EditableLabel = ({ id, currentLabel, onSave }: { id: string, currentLabel:
         </div>
     );
 };
-
 
 // --- LOCK ROW ---
 export function LockRow({ lockId }: { lockId: bigint }) {
@@ -91,40 +84,35 @@ export function LockRow({ lockId }: { lockId: bigint }) {
     args: [lockId],
   });
 
+  // V11 MAPPING: token(0), amount(1), owner(2), decimals(3), withdrawn(4), unlockTime(5)
+  const tokenAddress = lock ? lock[0] : undefined;
+  
   const { data: tokenData } = useReadContracts({
     contracts: [
-      { address: lock?.[1], abi: erc20Abi, functionName: 'symbol' },
-      { address: lock?.[1], abi: erc20Abi, functionName: 'decimals' },
+      { address: tokenAddress, abi: erc20Abi, functionName: 'symbol' },
     ],
-    query: { enabled: !!lock }
+    query: { enabled: !!tokenAddress }
   });
 
-  // NEW: Fetch USD Price
-  // Note: lock[1] is token address in V7 struct
-  const { data: price } = useTokenPrice(chain?.id, lock?.[1]);
+  const { data: price } = useTokenPrice(chain?.id, tokenAddress);
 
   if (isLoading || !lock) {
     return <div className="grid grid-cols-6 p-4 border-b border-white/5 animate-pulse"><div className="col-span-6 h-4 bg-white/5 rounded"></div></div>;
   }
 
-  const cachedDecimals = lock[2];
-  const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
-  const tokenDecimals = Number(tokenData?.[1]?.result || cachedDecimals || 18);
-  
-  // Amount Formatting
-  const rawAmount = Number(formatUnits(lock[4], tokenDecimals));
-  const amountFormatted = rawAmount.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  
-  // USD Calculation
-  const usdValue = price && price > 0 ? (rawAmount * price).toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : null;
+  const rawAmount = lock[1];
+  const ownerAddress = lock[2];
+  const decimals = Number(lock[3] || 18);
+  const isWithdrawn = lock[4];
+  const unlockTime = Number(lock[5]);
 
-  // Date Calculations
-  const unlockDate = new Date(Number(lock[5]) * 1000);
-  const now = new Date();
-  const isUnlocked = now > unlockDate;
-  const isWithdrawn = lock[6];
+  const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
+  const amountFormatted = Number(formatUnits(rawAmount, decimals)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const usdValue = price && price > 0 ? (Number(formatUnits(rawAmount, decimals)) * price).toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : null;
+
+  const unlockDate = new Date(unlockTime * 1000);
+  const isUnlocked = Date.now() > unlockTime * 1000;
   
-  // Dynamic Status
   let statusDisplay;
   if (isWithdrawn) {
       statusDisplay = <span className="text-zinc-500 line-through text-[10px] sm:text-xs">WITHDRAWN</span>;
@@ -151,18 +139,13 @@ export function LockRow({ lockId }: { lockId: bigint }) {
       className="grid grid-cols-6 min-w-[900px] p-4 border-b border-white/5 text-sm font-mono hover:bg-white/5 transition-colors cursor-pointer group items-center"
     >
       <div className="flex flex-col">
-          <EditableLabel 
-            id={fancyId} 
-            currentLabel={userLabel} 
-            onSave={(name) => setLabel(fancyId, name)} 
-          />
+          <EditableLabel id={fancyId} currentLabel={userLabel} onSave={(name) => setLabel(fancyId, name)} />
           {userLabel && <span className="text-[9px] text-zinc-500">{fancyId}</span>}
       </div>
 
       <div><NetworkBadge chainId={chain?.id} /></div>
-      <div className="text-zinc-300 group-hover:text-white">{shortAddress(lock[3])}</div>
+      <div className="text-zinc-300 group-hover:text-white">{shortAddress(ownerAddress)}</div>
       
-      {/* AMOUNT + USD */}
       <div className="flex flex-col">
           <span className="text-white font-medium">{amountFormatted}</span>
           {usdValue && <span className="text-[10px] text-zinc-500">≈ {usdValue}</span>}
@@ -189,44 +172,39 @@ export function VestingRow({ vestingId }: { vestingId: bigint }) {
       functionName: 'vestings',
       args: [vestingId],
     });
+
+    // V11 MAPPING: token(0), total(1), owner(2), decimals(3), claimed(4), start(5), cliff(6), duration(7)
+    const tokenAddress = vest ? vest[0] : undefined;
   
     const { data: tokenData } = useReadContracts({
       contracts: [
-        { address: vest?.[1], abi: erc20Abi, functionName: 'symbol' },
-        { address: vest?.[1], abi: erc20Abi, functionName: 'decimals' },
+        { address: tokenAddress, abi: erc20Abi, functionName: 'symbol' },
       ],
-      query: { enabled: !!vest }
+      query: { enabled: !!tokenAddress }
     });
-  
-    // NEW: Fetch USD Price
-    const { data: price } = useTokenPrice(chain?.id, vest?.[1]);
 
+    const { data: price } = useTokenPrice(chain?.id, tokenAddress);
+  
     if (isLoading || !vest) return null;
   
-    const cachedDecimals = vest[2];
+    const totalRaw = vest[1];
+    const ownerAddress = vest[2];
+    const decimals = Number(vest[3] || 18);
+    const claimedRaw = vest[4];
+    const startTime = Number(vest[5]);
+    const cliff = Number(vest[6]);
+    const duration = Number(vest[7]);
+
     const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
-    const tokenDecimals = Number(tokenData?.[1]?.result || cachedDecimals || 18);
-    
-    // Amount Formatting
-    const rawTotal = Number(formatUnits(vest[4], tokenDecimals));
-    const totalAmount = rawTotal.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    const claimedAmount = Number(formatUnits(vest[5], tokenDecimals));
-    const isFullyClaimed = claimedAmount >= Number(formatUnits(vest[4], tokenDecimals));
+    const totalAmount = Number(formatUnits(totalRaw, decimals)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    const isFullyClaimed = claimedRaw >= totalRaw;
+    const usdValue = price && price > 0 ? (Number(formatUnits(totalRaw, decimals)) * price).toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : null;
 
-    // USD Calculation
-    const usdValue = price && price > 0 ? (rawTotal * price).toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : null;
-
-    // End Date
-    const startTime = Number(vest[6]);
-    const cliff = Number(vest[7]);
-    const duration = Number(vest[8]);
     const endTime = new Date((startTime + cliff + duration) * 1000);
-
     const currentChainId = chain?.id || 84532;
     const fancyId = formatVestingId(vestingId, currentChainId);
     const userLabel = labels[fancyId] || "";
 
-    // Status
     let statusDisplay;
     if (isFullyClaimed) {
         statusDisplay = <span className="text-zinc-500 text-[10px] sm:text-xs">COMPLETED</span>;
@@ -247,18 +225,13 @@ export function VestingRow({ vestingId }: { vestingId: bigint }) {
         className="grid grid-cols-6 min-w-[900px] p-4 border-b border-white/5 text-sm font-mono hover:bg-white/5 transition-colors cursor-pointer group items-center"
       >
         <div className="flex flex-col">
-            <EditableLabel 
-                id={fancyId} 
-                currentLabel={userLabel} 
-                onSave={(name) => setLabel(fancyId, name)} 
-            />
+            <EditableLabel id={fancyId} currentLabel={userLabel} onSave={(name) => setLabel(fancyId, name)} />
             {userLabel && <span className="text-[9px] text-zinc-500">{fancyId}</span>}
         </div>
 
         <div><NetworkBadge chainId={chain?.id} /></div>
-        <div className="text-zinc-300">{shortAddress(vest[3])}</div>
+        <div className="text-zinc-300">{shortAddress(ownerAddress)}</div>
         
-        {/* AMOUNT + USD */}
         <div className="flex flex-col">
             <span className="text-white font-medium">{totalAmount}</span>
             {usdValue && <span className="text-[10px] text-zinc-500">≈ {usdValue}</span>}

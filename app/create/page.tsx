@@ -50,7 +50,7 @@ export default function CreatePage() {
   // BATCH STATE
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [batchItems, setBatchItems] = useState<BatchItem[]>([
-      { amount: "", duration: "365", cliff: "" } // Initial Row
+      { amount: "", duration: "365", cliff: "" }
   ]);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
 
@@ -73,10 +73,7 @@ export default function CreatePage() {
     args: address ? [address, activeContract] : undefined,
   });
 
-  const { writeContract, data: writeHash, isPending: isWalletLoading, error: writeError } = useWriteContract();
-  
-  // For Loop
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, data: writeHash, isPending: isWalletLoading, error: writeError } = useWriteContract();
 
   const { isLoading: isTxConfirming, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({
     hash: writeHash || txHash,
@@ -85,7 +82,6 @@ export default function CreatePage() {
   // --- CALCULATIONS ---
   const finalDecimals = decimals || 18;
 
-  // Calculate Total Amount (Single or Batch)
   let totalAmountWei = BigInt(0);
   if (isBatchMode && activeTab === 'vesting') {
       totalAmountWei = batchItems.reduce((acc, item) => {
@@ -113,9 +109,7 @@ export default function CreatePage() {
   const isInputValid = isValidAddress && 
                        (isBatchMode ? totalAmountWei > 0 && !isBatchInvalid : amount && !isTimeParadox && !isInvalidDuration && !isInvalidCliff);
 
-
   // --- HANDLERS ---
-
   useEffect(() => {
     if (isTxSuccess && actionType === 'approve') {
         refetchAllowance();
@@ -143,12 +137,17 @@ export default function CreatePage() {
   const handleApprove = async () => {
     if (!isInputValid) return;
     setActionType('approve');
-    writeContract({
-        address: tokenAddress as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [activeContract, totalAmountWei],
-    });
+    try {
+        await writeContractAsync({
+            address: tokenAddress as `0x${string}`,
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [activeContract, totalAmountWei],
+        });
+    } catch (e) {
+        console.error(e);
+        setActionType(null);
+    }
   };
 
   const handleLock = async () => {
@@ -157,28 +156,31 @@ export default function CreatePage() {
 
     try {
         if (activeTab === 'lock') {
+            // STANDARD LOCK
             const unlockTimestamp = Math.floor(new Date(unlockDate).getTime() / 1000);
-            writeContract({
+            const hash = await writeContractAsync({
                 address: activeContract,
                 abi: CONTRACT_ABI,
                 functionName: 'lockToken',
                 args: [tokenAddress as `0x${string}`, totalAmountWei, BigInt(unlockTimestamp)],
-                value: parseEther("0.03"),
+                value: parseEther("0.05"),
             });
-            // Hash set via wagmi hook for single tx
-            setIsSuccessScreen(true); // Optimistic screen switch, real confirm handled by hook
+            setTxHash(hash);
+            setIsSuccessScreen(true);
 
         } else if (!isBatchMode) {
+            // SINGLE VESTING
             const durationSeconds = BigInt(parseInt(vestingDays) * 24 * 60 * 60);
             const cliffSeconds = cliffDays ? BigInt(parseInt(cliffDays) * 24 * 60 * 60) : BigInt(0);
             
-            writeContract({
+            const hash = await writeContractAsync({
                 address: activeContract,
                 abi: CONTRACT_ABI,
                 functionName: 'createVesting',
                 args: [tokenAddress as `0x${string}`, totalAmountWei, cliffSeconds, durationSeconds],
                 value: parseEther("0.02"),
             });
+            setTxHash(hash);
             setIsSuccessScreen(true);
 
         } else {
@@ -186,7 +188,7 @@ export default function CreatePage() {
             let lastHash: `0x${string}` | undefined;
             
             for (let i = 0; i < batchItems.length; i++) {
-                setCurrentBatchIndex(i + 1);
+                setCurrentBatchIndex(i + 1); // Set Index BEFORE async call
                 const item = batchItems[i];
                 const amt = parseUnits(item.amount, finalDecimals);
                 const dur = BigInt(parseInt(item.duration) * 24 * 60 * 60);
@@ -240,6 +242,9 @@ export default function CreatePage() {
     );
   }
 
+  // Helper to determine button disabled state
+  const isBusy = isWalletLoading || isTxConfirming || currentBatchIndex > 0;
+
   return (
     <main className="min-h-screen bg-[#030305]" onClick={() => setOpenInfo(null)}>
       <Navbar />
@@ -247,69 +252,49 @@ export default function CreatePage() {
       <div className="max-w-2xl mx-auto px-6 py-20">
         <div className="flex flex-col items-center mb-8">
             <h1 className="text-3xl font-mono uppercase font-normal tracking-tight text-white mb-3 text-center">Initialize Protocol</h1>
-            {/* network pill */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,1)] animate-pulse"></div>
-                <span className="text-blue-400 font-mono text-[10px] uppercase tracking-wider">Target: {chain?.name || "Not Connected"}</span>
+                <span className="text-blue-400 font-mono text-[10px] uppercase tracking-wider">Target: {chain?.name || "Base Sepolia"}</span>
             </div>
         </div>
 
         <div className="glass-card rounded-2xl p-1">
           <div className="grid grid-cols-2 gap-1 mb-8 bg-black/20 p-1 rounded-xl">
-            {/* TAB: STANDARD LOCK */}
+            {/* TABS ... (No Changes) */}
             <div className="relative">
                 <button 
                     onClick={() => { setActiveTab('lock'); setIsBatchMode(false); }} 
                     className={`w-full py-3 rounded-lg font-mono text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'lock' ? 'bg-white/10 text-white border border-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
                 >
                     Standard Lock
-                    <Info 
-                        size={12} 
-                        className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                        onClick={(e) => { e.stopPropagation(); toggleInfo('lock'); }}
-                    />
+                    <Info size={12} className="text-zinc-500 hover:text-white transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleInfo('lock'); }}/>
                 </button>
                 {openInfo === 'lock' && (
-                    <InfoPopup 
-                        title="Standard Lock" 
-                        description="Tokens are 100% locked until the specific date. Withdrawal is impossible before the unlock time. Best for Liquidity Pools."
-                        className="top-full left-0 mt-2"
-                        onClose={() => setOpenInfo(null)}
-                    />
+                    <InfoPopup title="Standard Lock" description="Tokens are 100% locked until the specific date. Withdrawal is impossible before the unlock time." className="top-full left-0 mt-2" onClose={() => setOpenInfo(null)}/>
                 )}
             </div>
-
-            {/* TAB: LINEAR VESTING */}
             <div className="relative">
                 <button 
                     onClick={() => setActiveTab('vesting')} 
                     className={`w-full py-3 rounded-lg font-mono text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'vesting' ? 'bg-white/10 text-white border border-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
                 >
                     Linear Vesting
-                    <Info 
-                        size={12} 
-                        className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                        onClick={(e) => { e.stopPropagation(); toggleInfo('vesting'); }}
-                    />
+                    <Info size={12} className="text-zinc-500 hover:text-white transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleInfo('vesting'); }}/>
                 </button>
                 {openInfo === 'vesting' && (
-                    <InfoPopup 
-                        title="Linear Vesting" 
-                        description="Tokens unlock gradually over time (second by second). You can claim unlocked tokens at any time. Best for Team/Advisor allocations."
-                        className="top-full right-0 mt-2"
-                        onClose={() => setOpenInfo(null)}
-                    />
+                    <InfoPopup title="Linear Vesting" description="Tokens unlock gradually over time. You can claim unlocked tokens at any time." className="top-full right-0 mt-2" onClose={() => setOpenInfo(null)}/>
                 )}
             </div>
           </div>
 
           <div className="px-8 pb-8 space-y-6">
+             {/* INPUTS ... (No Changes) */}
              <div className="space-y-2">
                 <label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Token Address</label>
                 <input type="text" placeholder="0x..." className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-4 text-white focus:outline-none focus:border-purple-500/50 font-mono transition-colors placeholder:text-zinc-700" value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value)} />
              </div>
 
-             {/* === STANDARD LOCK MODE === */}
+             {/* STANDARD LOCK INPUTS */}
              {activeTab === 'lock' && (
                <>
                  <div className="space-y-2">
@@ -326,7 +311,7 @@ export default function CreatePage() {
                </>
              )}
 
-             {/* === VESTING MODE === */}
+             {/* VESTING INPUTS */}
              {activeTab === 'vesting' && (
                <>
                  {/* Batch Toggle */}
@@ -334,27 +319,10 @@ export default function CreatePage() {
                     <div className="flex items-center gap-2">
                         <Layers size={16} className={isBatchMode ? "text-purple-400" : "text-zinc-500"} />
                         <span className="text-xs font-mono uppercase tracking-widest text-zinc-300">Batch Mode</span>
-                        <Info 
-                            size={12} 
-                            className="text-zinc-600 hover:text-white transition-colors cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); toggleInfo('batch'); }}
-                        />
-                        {openInfo === 'batch' && (
-                            <div className="absolute top-10 left-0 z-50">
-                                <InfoPopup 
-                                    title="Batch Mode" 
-                                    description="Create multiple vesting schedules in one session. Useful for distributing tokens to multiple team members. You will sign a separate transaction for each row."
-                                    onClose={() => setOpenInfo(null)}
-                                />
-                            </div>
-                        )}
+                        <Info size={12} className="text-zinc-600 hover:text-white transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleInfo('batch'); }} />
+                        {openInfo === 'batch' && <div className="absolute top-10 left-0 z-50"><InfoPopup title="Batch Mode" description="Create multiple vesting schedules in one session. Useful for distributing tokens to multiple team members." onClose={() => setOpenInfo(null)} /></div>}
                     </div>
-                    <button 
-                        onClick={() => setIsBatchMode(!isBatchMode)}
-                        className={`w-10 h-5 rounded-full transition-colors relative ${isBatchMode ? "bg-purple-500" : "bg-zinc-700"}`}
-                    >
-                        <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform ${isBatchMode ? "left-6" : "left-1"}`} />
-                    </button>
+                    <button onClick={() => setIsBatchMode(!isBatchMode)} className={`w-10 h-5 rounded-full transition-colors relative ${isBatchMode ? "bg-purple-500" : "bg-zinc-700"}`}><div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform ${isBatchMode ? "left-6" : "left-1"}`} /></button>
                  </div>
 
                  {!isBatchMode ? (
@@ -374,16 +342,9 @@ export default function CreatePage() {
                             </div>
                             <div className="space-y-2 relative">
                                 <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-1">
-                                        <label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Cliff Period</label>
-                                        <Info size={12} className="text-zinc-600 hover:text-white transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleInfo('cliff'); }} />
-                                    </div>
+                                    <div className="flex items-center gap-1"><label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Cliff Period</label><Info size={12} className="text-zinc-600 hover:text-white transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleInfo('cliff'); }} /></div>
                                     <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">(Optional)</span>
-                                    {openInfo === 'cliff' && (
-                                        <div className="absolute top-6 left-0 z-50">
-                                            <InfoPopup title="Cliff Period" description="A waiting period before vesting starts. No tokens unlock during the Cliff. E.g. '30 Day Cliff' means the first token unlocks after 30 days." onClose={() => setOpenInfo(null)} />
-                                        </div>
-                                    )}
+                                    {openInfo === 'cliff' && <div className="absolute top-6 left-0 z-50"><InfoPopup title="Cliff Period" description="A waiting period before vesting starts. No tokens unlock during the Cliff." onClose={() => setOpenInfo(null)} /></div>}
                                 </div>
                                 <div className="relative">
                                     <input type="number" placeholder="e.g. 30 days" className={`w-full bg-[#0A0A0A] border rounded-lg p-4 text-white focus:outline-none font-mono transition-colors placeholder:text-zinc-700 ${isInvalidCliff ? 'border-red-500/50' : 'border-white/10 focus:border-purple-500/50'}`} value={cliffDays} onChange={(e) => setCliffDays(e.target.value)} />
@@ -393,7 +354,7 @@ export default function CreatePage() {
                         </div>
                     </>
                  ) : (
-                    /* BATCH MODE UI */
+                    /* BATCH VESTING */
                     <div className="space-y-4">
                         <div className="grid grid-cols-12 gap-2 text-[10px] font-mono uppercase text-zinc-500 tracking-widest px-1">
                             <div className="col-span-5">Amount</div>
@@ -401,58 +362,28 @@ export default function CreatePage() {
                             <div className="col-span-3">Cliff</div>
                             <div className="col-span-1"></div>
                         </div>
-                        
                         {batchItems.map((item, idx) => (
                             <div key={idx} className="grid grid-cols-12 gap-2 animate-in fade-in slide-in-from-left-2">
                                 <div className="col-span-5">
-                                    <input 
-                                        type="number" 
-                                        placeholder="0.00" 
-                                        className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-purple-500/50 font-mono"
-                                        value={item.amount}
-                                        onChange={(e) => handleBatchChange(idx, 'amount', e.target.value)}
-                                    />
+                                    <input type="number" placeholder="0.00" className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-purple-500/50 font-mono" value={item.amount} onChange={(e) => handleBatchChange(idx, 'amount', e.target.value)} />
                                 </div>
                                 <div className="col-span-3">
-                                    <input 
-                                        type="number" 
-                                        placeholder="365" 
-                                        className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-purple-500/50 font-mono"
-                                        value={item.duration}
-                                        onChange={(e) => handleBatchChange(idx, 'duration', e.target.value)}
-                                    />
+                                    <input type="number" placeholder="365" className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-purple-500/50 font-mono" value={item.duration} onChange={(e) => handleBatchChange(idx, 'duration', e.target.value)} />
                                 </div>
                                 <div className="col-span-3">
-                                    <input 
-                                        type="number" 
-                                        placeholder="0" 
-                                        className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-purple-500/50 font-mono"
-                                        value={item.cliff}
-                                        onChange={(e) => handleBatchChange(idx, 'cliff', e.target.value)}
-                                    />
+                                    <input type="number" placeholder="0" className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-purple-500/50 font-mono" value={item.cliff} onChange={(e) => handleBatchChange(idx, 'cliff', e.target.value)} />
                                 </div>
                                 <div className="col-span-1 flex items-center justify-center">
-                                    {batchItems.length > 1 && (
-                                        <button onClick={() => removeBatchRow(idx)} className="text-zinc-600 hover:text-red-400 transition-colors">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    )}
+                                    {batchItems.length > 1 && <button onClick={() => removeBatchRow(idx)} className="text-zinc-600 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>}
                                 </div>
                             </div>
                         ))}
-
-                        <button onClick={addBatchRow} className="w-full py-2 border border-dashed border-white/20 rounded-lg text-zinc-500 hover:text-white hover:border-white/40 transition-all flex items-center justify-center gap-2 text-xs font-mono uppercase tracking-widest">
-                            <Plus size={14} /> Add Row
-                        </button>
-
+                        <button onClick={addBatchRow} className="w-full py-2 border border-dashed border-white/20 rounded-lg text-zinc-500 hover:text-white hover:border-white/40 transition-all flex items-center justify-center gap-2 text-xs font-mono uppercase tracking-widest"><Plus size={14} /> Add Row</button>
                         <div className="flex justify-between items-center text-xs font-mono uppercase tracking-widest text-zinc-400 pt-2 px-1">
                             <span>Total Items: {batchItems.length}</span>
                             <span>Total Amount: {formatUnits(totalAmountWei, finalDecimals)}</span>
                         </div>
-                        
-                        <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-lg text-[10px] text-purple-300 font-sans">
-                            <strong>Note:</strong> You will be asked to sign {batchItems.length} separate transactions. Each one costs 0.02 ETH.
-                        </div>
+                        <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-lg text-[10px] text-purple-300 font-sans"><strong>Note:</strong> You will be asked to sign {batchItems.length} separate transactions. Each one costs 0.02 ETH.</div>
                     </div>
                  )}
                </>
@@ -466,21 +397,31 @@ export default function CreatePage() {
                 </div>
              </div>
 
+             {/* FIXED ACTION BUTTONS WITH BATCH STATUS */}
              <div className="pt-4 space-y-3">
-               <button onClick={handleApprove} disabled={!needsApproval || !isInputValid || isWalletLoading || isTxConfirming} className={`w-full flex items-center justify-center gap-2 ${needsApproval ? 'btn-glow' : 'btn-ghost opacity-50 cursor-not-allowed'}`}>
-                  {actionType === 'approve' && (isWalletLoading || isTxConfirming) ? (
+               <button 
+                  onClick={handleApprove} 
+                  disabled={!needsApproval || !isInputValid || isBusy} 
+                  className={`w-full flex items-center justify-center gap-2 ${needsApproval ? 'btn-glow' : 'btn-ghost opacity-50 cursor-not-allowed'}`}
+               >
+                  {actionType === 'approve' && isBusy ? (
                       <><Loader2 className="animate-spin" size={16} />{isTxConfirming ? "Confirming..." : "Sign in Wallet..."}</>
                   ) : !needsApproval && isInputValid && totalAmountWei > 0 ? (
                       <><Check size={16} />1. Token Authorized</>
                   ) : ("1. Authorize Token")}
                </button>
 
-               <button onClick={handleLock} disabled={needsApproval || !isInputValid || isWalletLoading || isTxConfirming} className={`w-full flex items-center justify-center gap-2 ${!needsApproval && isInputValid ? 'btn-glow' : 'btn-ghost opacity-50 cursor-not-allowed'}`}>
-                  {actionType === 'lock' && (isWalletLoading || isTxConfirming) ? (
-                       <><Loader2 className="animate-spin" size={16} />
-                       {currentBatchIndex > 0 ? `Signing ${currentBatchIndex}/${batchItems.length}...` : (isTxConfirming ? "Securing Protocol..." : "Sign in Wallet...")}
-                       </>
-                  ) : (`2. Initialize ${activeTab === 'lock' ? 'Lock (0.03 ETH)' : isBatchMode ? `Batch (${(0.02 * batchItems.length).toFixed(2)} ETH)` : 'Vesting (0.02 ETH)'}`)}
+               <button 
+                  onClick={handleLock} 
+                  disabled={needsApproval || !isInputValid || isBusy} 
+                  className={`w-full flex items-center justify-center gap-2 ${!needsApproval && isInputValid ? 'btn-glow' : 'btn-ghost opacity-50 cursor-not-allowed'}`}
+               >
+                  {/* BATCH PROGRESS INDICATOR */}
+                  {currentBatchIndex > 0 ? (
+                       <><Loader2 className="animate-spin" size={16} /> Signing {currentBatchIndex}/{batchItems.length}...</>
+                  ) : actionType === 'lock' && isBusy ? (
+                       <><Loader2 className="animate-spin" size={16} />{isTxConfirming ? "Securing Protocol..." : "Sign in Wallet..."}</>
+                  ) : (`2. Initialize ${activeTab === 'lock' ? 'Lock (0.05 ETH)' : isBatchMode ? `Batch (${(0.02 * batchItems.length).toFixed(2)} ETH)` : 'Vesting (0.02 ETH)'}`)}
                </button>
 
                {isTimeParadox && <p className="text-red-400 text-xs font-mono uppercase tracking-widest mt-3 text-center">Error: Time Paradox Detected</p>}

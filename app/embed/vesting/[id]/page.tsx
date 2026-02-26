@@ -39,23 +39,25 @@ export default function VestingEmbed() {
     chainId: targetChainId,
   });
 
+  // V11 MAPPING: token(0), total(1), owner(2), decimals(3), claimed(4), start(5), cliff(6), duration(7)
+  const tokenAddress = vest ? vest[0] : undefined;
+
   const { data: tokenData } = useReadContracts({
     contracts: [
-      { address: vest?.[1], abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
-      { address: vest?.[1], abi: erc20Abi, functionName: 'decimals', chainId: targetChainId },
+      { address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
     ],
-    query: { enabled: !!vest }
+    query: { enabled: !!tokenAddress }
   });
 
   if (isLoading || !vest) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-white" /></div>;
 
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
-  const decimals = Number(tokenData?.[1]?.result || vest[2] || 18);
-  const totalAmount = Number(formatUnits(vest[4], decimals));
-  const claimedAmount = Number(formatUnits(vest[5], decimals));
-  const startTime = Number(vest[6]);
-  const cliffDuration = Number(vest[7]);
-  const duration = Number(vest[8]);
+  const decimals = Number(vest[3] || 18);
+  const totalAmount = Number(formatUnits(vest[1], decimals));
+  const claimedAmount = Number(formatUnits(vest[4], decimals));
+  const startTime = Number(vest[5]);
+  const cliffDuration = Number(vest[6]);
+  const duration = Number(vest[7]);
   
   const now = Math.floor(Date.now() / 1000);
   const endTime = new Date((startTime + cliffDuration + duration) * 1000);
@@ -124,7 +126,7 @@ export default function VestingEmbed() {
       <div className="px-5 py-3 border-t border-white/5 bg-white/[0.01] flex items-center justify-between relative z-10 group-hover:bg-white/[0.03] transition-colors">
         <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
             <CheckCircle2 size={10} className="text-purple-500" />
-            <span className="font-mono text-[8px] uppercase tracking-widest text-zinc-400 group-hover:text-zinc-300">Verified by 0xKeep Protocol</span>
+            <span className="font-mono text-[8px] uppercase tracking-widest text-zinc-400 group-hover:text-zinc-300">Verified Protocol</span>
         </div>
         <ExternalLink size={10} className="text-zinc-600 group-hover:text-white transition-colors" />
       </div>
