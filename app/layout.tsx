@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Chakra_Petch } from "next/font/google";
 import "./globals.css";
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from "./providers"; // We will create this next
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${jetbrains.variable} ${chakra.variable} bg-[#030305] text-white min-h-screen selection:bg-purple-500/30`}>
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
