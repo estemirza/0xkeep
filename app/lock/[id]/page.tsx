@@ -110,7 +110,7 @@ export default function LockCertificatePage() {
   };
 
   const handleShareTwitter = () => {
-    const text = `I just secured liquidity on @0xKeepProtocol.\n\n🔒 Lock ID: #${id}\n💎 Amount: ${amount} ${tokenSymbol}\n\nVerify proof here:`;
+    const text = `I just secured liquidity on @0xkeep_official.\n\n🔒 Lock ID: #${id}\n💎 Amount: ${amount} ${tokenSymbol}\n\nVerify proof here:`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
     window.open(url, '_blank');
   };

@@ -119,7 +119,7 @@ export default function VestingCertificatePage() {
   };
 
   const handleShareTwitter = () => {
-    const text = `I just started a vesting schedule on @0xKeepProtocol.\n\n📈 Vesting ID: #${id}\n💎 Total: ${totalAmount.toLocaleString()} ${tokenSymbol}\n\nVerify proof here:`;
+    const text = `I just started a vesting schedule on @0xkeep_official.\n\n📈 Vesting ID: #${id}\n💎 Total: ${totalAmount.toLocaleString()} ${tokenSymbol}\n\nVerify proof here:`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
     window.open(url, '_blank');
   };
