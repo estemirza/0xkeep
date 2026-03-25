@@ -6,18 +6,29 @@ import { useAccount, useReadContract, useReadContracts, useWriteContract, useWai
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { parseId } from "@/lib/formatter";
 import { erc20Abi, formatUnits } from "viem";
-import { Loader2, ShieldCheck, AlertTriangle, ChevronDown, ChevronUp, CheckCircle2, Copy, Twitter, Code, ExternalLink } from "lucide-react";
+import { Loader2, ShieldCheck, AlertTriangle, Calendar, CheckCircle2, Copy, Twitter, Code, ExternalLink, Lock, Info, X } from "lucide-react";
 import { useState } from "react";
+import { isAddress } from "viem";
 
 const getNetworkName = (chainId: number) => {
-    const names: Record<number, string> = {
-        84532: "Base Sepolia",
-        8453: "Base",
-        42161: "Arbitrum",
-        10: "Optimism"
-    };
-    return names[chainId] || "Unknown Network";
+    const names: Record<number, string> = { 84532: "BASE SEPOLIA", 8453: "BASE", 42161: "ARBITRUM", 10: "OPTIMISM" };
+    return names[chainId] || "UNKNOWN NETWORK";
 };
+
+// HELPER: Info Popup
+const InfoPopup = ({ title, description, onClose, className = "" }: { title: string, description: string, onClose: () => void, className?: string }) => (
+  <div className={`absolute z-50 w-64 p-4 bg-zinc-900 border border-white/20 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 ${className}`} onClick={(e) => e.stopPropagation()}>
+    <div className="flex justify-between items-start mb-2 border-b border-white/10 pb-2">
+      <span className="text-[10px] font-mono uppercase tracking-widest text-white">{title}</span>
+      <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-zinc-500 hover:text-white transition-colors">
+        <X size={12} />
+      </button>
+    </div>
+    <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+      {description}
+    </p>
+  </div>
+);
 
 export default function LockCertificatePage() {
   const { id } = useParams();
@@ -36,53 +47,45 @@ export default function LockCertificatePage() {
 
   const [extendDate, setExtendDate] = useState("");
   const [transferAddress, setTransferAddress] = useState("");
-  const [activeAction, setActiveAction] = useState<'none' | 'extend' | 'transfer'>('none');
-  const [isCopied, setIsCopied] = useState(false);
+  const[isCopied, setIsCopied] = useState(false);
   const [isEmbedCopied, setIsEmbedCopied] = useState(false);
+  const [openInfo, setOpenInfo] = useState<string | null>(null);
+  const [activeAction, setActiveAction] = useState<'none' | 'extend' | 'transfer' | 'withdraw'>('none');
 
-  // 1. Fetch Lock Data
   const { data: lock, isLoading, refetch } = useReadContract({
-    address: activeContract,
-    abi: CONTRACT_ABI,
-    functionName: 'locks',
-    args: [rawId],
-    chainId: targetChainId, 
+    address: activeContract, abi: CONTRACT_ABI, functionName: 'locks', args: [rawId], chainId: targetChainId, 
   });
 
-  // V11 MAPPING: token(0), amount(1), owner(2), decimals(3), withdrawn(4), unlockTime(5)
   const tokenAddress = lock ? lock[0] : undefined;
-
-  // 2. Fetch Token Data
   const { data: tokenData } = useReadContracts({
-    contracts: [
-      { address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
-    ],
-    query: { enabled: !!tokenAddress }
+    contracts:[{ address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: targetChainId }], query: { enabled: !!tokenAddress }
   });
 
   const { writeContract, data: txHash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
-
   if (isSuccess) refetch();
-  if (isLoading || !lock) return <div className="min-h-screen bg-[#030305] flex items-center justify-center"><Loader2 className="animate-spin text-white" /></div>;
+
+  if (isLoading || !lock) return <div className="min-h-screen bg-[#0B0B0F] flex items-center justify-center"><Loader2 className="animate-spin text-[#555566]" /></div>;
 
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
   const decimals = Number(lock[3] || 18);
-  const amount = Number(formatUnits(lock[1], decimals)).toLocaleString();
+  const amount = Number(formatUnits(lock[1], decimals)).toLocaleString(undefined, { maximumFractionDigits: 2 });
   const unlockDate = new Date(Number(lock[5]) * 1000);
   const isOwner = address === lock[2];
   const isWithdrawn = lock[4];
   const isUnlocked = Date.now() > unlockDate.getTime();
 
-  // Validation
+  // Validations
   const selectedExtend = extendDate ? new Date(extendDate) : null;
   const isExtensionInvalid = selectedExtend ? (selectedExtend.getTime() <= unlockDate.getTime() || selectedExtend.getTime() <= Date.now()) : false;
+  
+  const isTransferAddressFilled = transferAddress.trim().length > 0;
+  const isInvalidTransfer = isTransferAddressFilled && !isAddress(transferAddress);
 
-  // Handlers
   const executeAction = (action: () => void) => {
     if (chain?.id !== targetChainId) {
         if (confirm(`This lock is on ${getNetworkName(targetChainId)}. Switch network to interact?`)) {
-            switchChain({ chainId: targetChainId });
+            if (switchChain) switchChain({ chainId: targetChainId });
         }
         return;
     }
@@ -90,23 +93,25 @@ export default function LockCertificatePage() {
   };
 
   const handleWithdraw = () => executeAction(() => {
-    writeContract({ address: activeContract, abi: CONTRACT_ABI, functionName: 'withdrawLock', args: [rawId] });
+      setActiveAction('withdraw');
+      writeContract({ address: activeContract, abi: CONTRACT_ABI, functionName: 'withdrawLock', args:[rawId] });
   });
 
   const handleExtend = () => executeAction(() => {
-    if (!extendDate || isExtensionInvalid) return;
-    const newTimestamp = Math.floor(new Date(extendDate).getTime() / 1000);
-    writeContract({ address: activeContract, abi: CONTRACT_ABI, functionName: 'extendLock', args: [rawId, BigInt(newTimestamp)] });
+      if (!extendDate || isExtensionInvalid) return;
+      setActiveAction('extend');
+      writeContract({ address: activeContract, abi: CONTRACT_ABI, functionName: 'extendLock', args:[rawId, BigInt(Math.floor(new Date(extendDate).getTime() / 1000))] });
   });
 
   const handleTransfer = () => executeAction(() => {
-    writeContract({ address: activeContract, abi: CONTRACT_ABI, functionName: 'transferLockOwnership', args: [rawId, transferAddress as `0x${string}`] });
+      if(!transferAddress || isInvalidTransfer) return;
+      setActiveAction('transfer');
+      writeContract({ address: activeContract, abi: CONTRACT_ABI, functionName: 'transferLockOwnership', args:[rawId, transferAddress as `0x${string}`] });
   });
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+  const copyToClipboard = (text: string, setter: any) => {
+      navigator.clipboard.writeText(text);
+      setter(true); setTimeout(() => setter(false), 2000);
   };
 
   const handleShareTwitter = () => {
@@ -118,150 +123,250 @@ export default function LockCertificatePage() {
   const handleEmbed = () => {
     const embedCode = `<iframe src="${window.location.origin}/embed/lock/${id}" width="100%" height="220" style="max-width: 400px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;" frameborder="0"></iframe>`;
     navigator.clipboard.writeText(embedCode);
-    setIsEmbedCopied(true);
-    setTimeout(() => setIsEmbedCopied(false), 2000);
+    setIsEmbedCopied(true); setTimeout(() => setIsEmbedCopied(false), 2000);
   };
 
+  const toggleInfo = (key: string) => {
+    setOpenInfo(openInfo === key ? null : key);
+  };
+
+  let statusColor = "text-green-400";
+  let statusBg = "bg-green-400 shadow-[0_0_8px_#4ade80]";
+  let statusText = "LOCKED";
+  if (isWithdrawn) {
+      statusColor = "text-[#555566]"; statusBg = "bg-[#555566]"; statusText = "WITHDRAWN";
+  } else if (isUnlocked) {
+      statusColor = "text-green-400"; statusBg = "bg-green-400 shadow-[0_0_8px_#4ade80]"; statusText = "UNLOCKED";
+  }
+
   return (
-    <main className="min-h-screen bg-[#030305]">
-      <Navbar />
-
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-12">
-        <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-                <div className="bg-purple-500/10 p-2 rounded-lg"><ShieldCheck className="text-purple-400" size={24} /></div>
-                <h1 className="text-xl md:text-2xl font-mono uppercase text-white">Liquidity Certificate #{id}</h1>
-            </div>
-            <p className="text-zinc-500 font-mono text-xs uppercase tracking-widest">Immutable Proof of Locked Assets</p>
-        </div>
-
-        <div className="glass-card rounded-2xl p-6 md:p-8 mb-4 relative overflow-hidden">
-            {isWithdrawn && <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 font-mono uppercase text-xl tracking-widest text-zinc-500">Asset Withdrawn</div>}
-            
-            <div className="absolute top-4 right-4 md:top-6 md:right-6">
-                <div className="flex items-center gap-2 bg-black/40 px-2 py-1 md:px-3 md:py-1.5 rounded-full border border-white/5 backdrop-blur-md">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,1)]"></div>
-                    <span className="text-blue-400 font-mono text-[9px] md:text-[10px] uppercase tracking-wider">{getNetworkName(targetChainId)}</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 md:mt-4">
-                <div>
-                    <p className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-1">Locked Amount</p>
-                    <p className="text-3xl md:text-4xl font-mono text-white break-all">{amount}</p>
-                    <p className="text-purple-400 font-mono text-sm mt-1">{tokenSymbol}</p>
-                </div>
-                <div>
-                    <p className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-1">Unlock Date</p>
-                    <p className="text-2xl font-mono text-white">{unlockDate.toLocaleDateString()}</p>
-                    <p className="text-zinc-400 font-mono text-sm mt-1">{unlockDate.toLocaleTimeString()}</p>
-                    <div className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono uppercase tracking-wide border ${isUnlocked ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                        {isUnlocked ? "Unlocked" : `Locked for ${Math.ceil((unlockDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} Days`}
-                    </div>
-                </div>
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-white/5 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-xs font-mono">
-                <div>
-                    <p className="text-zinc-500 uppercase tracking-widest mb-1">Owner</p>
-                    <a href={`https://sepolia.basescan.org/address/${lock[2]}`} target="_blank" rel="noreferrer" className="text-zinc-300 hover:text-white transition-colors break-all flex items-center gap-2 group">
-                        {lock[2]}
-                        <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </a>
-                </div>
-                <div>
-                    <p className="text-zinc-500 uppercase tracking-widest mb-1">Token Address</p>
-                    <a href={`https://sepolia.basescan.org/token/${lock[0]}`} target="_blank" rel="noreferrer" className="text-zinc-300 hover:text-white transition-colors break-all flex items-center gap-2 group">
-                        {lock[0]}
-                        <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </a>
-                </div>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-white/5 flex flex-wrap gap-4 md:gap-6 items-center">
-                <button onClick={handleCopyLink} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group">
-                    {isCopied ? <CheckCircle2 size={14} className="text-green-400"/> : <Copy size={14} className="group-hover:text-purple-400"/>}
-                    <span className="font-mono text-[10px] uppercase tracking-widest">{isCopied ? "Copied" : "Copy Link"}</span>
-                </button>
-                <button onClick={handleShareTwitter} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group">
-                    <Twitter size={14} className="group-hover:text-blue-400"/>
-                    <span className="font-mono text-[10px] uppercase tracking-widest">Share on X</span>
-                </button>
-                <button onClick={handleEmbed} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group">
-                    {isEmbedCopied ? <CheckCircle2 size={14} className="text-green-400"/> : <Code size={14} className="group-hover:text-orange-400"/>}
-                    <span className="font-mono text-[10px] uppercase tracking-widest">{isEmbedCopied ? "Copied Code" : "Embed"}</span>
-                </button>
-            </div>
-        </div>
-
-        <div className="flex justify-center mb-10">
-            <a href={`https://sepolia.basescan.org/address/${activeContract}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity cursor-pointer group">
-                <CheckCircle2 size={14} className="text-purple-500 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all" />
-                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 group-hover:text-white">Verified by 0xKeep Protocol</span>
-                <ExternalLink size={10} className="text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+    <main className="min-h-screen bg-[#0B0B0F] pb-20" onClick={() => setOpenInfo(null)}>
+    
+      <div className="max-w-5xl mx-auto px-4 md:px-6 mt-12 flex flex-col items-center">
+        
+        {/* HEADER */}
+        <div className="flex flex-col items-center mb-12 text-center">
+            <a href={`https://sepolia.basescan.org/address/${activeContract}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full border border-white/5 bg-[#13131A] hover:bg-[#1A1A24] transition-colors cursor-pointer group">
+                <div className="bg-purple-500 rounded-full p-0.5"><CheckCircle2 size={10} className="text-white" /></div>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#8B8B9E] group-hover:text-white transition-colors">Verified by 0xKeep</span>
             </a>
+            
+            <h1 className="text-4xl md:text-5xl font-chakra font-bold text-white uppercase tracking-tight mb-2">
+                Lock Certificate
+            </h1>
+            <p className="text-[#555566] font-mono text-xs uppercase tracking-widest">
+                Certificate ID: {id}
+            </p>
         </div>
 
-        {isOwner && !isWithdrawn && (
-            <div className="space-y-4">
-                <h3 className="font-mono uppercase text-sm text-zinc-500 tracking-widest mb-4">Owner Controls</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onClick={handleWithdraw} disabled={!isUnlocked || isPending} className="btn-glow flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                        {isPending ? <Loader2 className="animate-spin" /> : "Withdraw Assets"}
-                    </button>
-                    <button onClick={() => setActiveAction(activeAction === 'extend' ? 'none' : 'extend')} className="btn-ghost flex items-center justify-center gap-2">
-                        <span>Extend Lock</span>
-                        {activeAction === 'extend' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                    <button onClick={() => setActiveAction(activeAction === 'transfer' ? 'none' : 'transfer')} className="btn-ghost flex items-center justify-center gap-2">
-                        <span>Transfer Ownership</span>
-                        {activeAction === 'transfer' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
+        <div className="w-full flex flex-col lg:flex-row gap-6 mb-6">
+            
+            {/* LEFT COLUMN: MAIN DATA CARD */}
+            <div className="flex-1 bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6 md:p-8 relative overflow-hidden flex flex-col justify-between">
+                {isWithdrawn && <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 font-mono uppercase text-xl tracking-widest text-zinc-500">Asset Withdrawn</div>}
+                
+                {/* Status Row */}
+                <div className="flex justify-between items-start mb-10">
+                    <div>
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566] block mb-2">Status</span>
+                        <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${statusBg}`}></div>
+                            <span className={`text-xl font-chakra font-bold uppercase tracking-wide ${statusColor}`}>{statusText}</span>
+                        </div>
+                    </div>
                 </div>
-                {activeAction === 'extend' && (
-                    <div className="glass-panel p-6 rounded-xl animate-in fade-in slide-in-from-top-2">
-                        <p className="text-xs font-mono uppercase tracking-wide text-zinc-300 mb-4">Extend lock duration.</p>
-                        <div className="flex flex-col gap-2">
-                            <div className="flex flex-col md:flex-row gap-4">
-                                <input type="datetime-local" className={`bg-black/50 border rounded-lg p-3 text-white font-mono flex-1 text-sm ${isExtensionInvalid ? 'border-red-500/50 focus:border-red-500' : 'border-white/10'}`} onChange={(e) => setExtendDate(e.target.value)} />
-                                <button onClick={handleExtend} disabled={isPending || !extendDate || isExtensionInvalid} className="btn-glow disabled:opacity-50 disabled:cursor-not-allowed">{isPending ? <Loader2 className="animate-spin"/> : "Confirm"}</button>
-                            </div>
-                            {isExtensionInvalid && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest">Error: Must be later than current unlock date</p>}
-                        </div>
-                    </div>
-                )}
-                {activeAction === 'transfer' && (
-                    <div className="glass-panel p-6 rounded-xl animate-in fade-in slide-in-from-top-2 border-l-4 border-l-red-500">
-                        <div className="flex items-center gap-2 text-red-400 mb-2"><AlertTriangle size={16} /><p className="font-mono uppercase text-xs font-bold">Warning: Irreversible Action</p></div>
-                        <p className="text-xs font-mono uppercase tracking-wide text-zinc-300 mb-4">Permanently transfer control to a new wallet.</p>
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <input type="text" placeholder="0x..." className="bg-black/50 border border-white/10 rounded-lg p-3 text-white font-mono flex-1 text-sm" onChange={(e) => setTransferAddress(e.target.value)} />
-                            <button onClick={handleTransfer} disabled={isPending} className="btn-ghost bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20">{isPending ? <Loader2 className="animate-spin"/> : "Transfer"}</button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        )}
 
-        <div className="mb-10 p-6 border border-white/5 rounded-xl bg-white/[0.02]">
-            <h3 className="font-mono uppercase text-xs text-zinc-500 tracking-widest mb-4">Protocol Guarantees</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <div className="flex items-center gap-2 mb-2"><CheckCircle2 size={14} className="text-green-400" /><span className="text-sm font-medium text-white font-mono">What this proves</span></div>
-                    <ul className="font-mono text-xs text-zinc-400 space-y-2 ml-6 list-disc marker:text-green-900">
-                        <li>Tokens are mathematically locked in the 0xKeep V11 contract.</li>
-                        <li>Ownership cannot be claimed or drained by 0xKeep admins.</li>
-                        <li>Withdrawal is cryptographically impossible before the unlock date.</li>
-                    </ul>
+                {/* Core Data */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                    <div>
+                        <p className="text-[10px] font-mono uppercase tracking-widest text-[#555566] mb-2">Locked Amount</p>
+                        <div className="flex items-baseline gap-2">
+                            <p className="text-3xl font-mono text-white break-all">{amount}</p>
+                            <p className="text-xl font-mono text-white">{tokenSymbol}</p>
+                        </div>
+                    </div>
+                    <div className="md:text-right">
+                        <p className="text-[10px] font-mono uppercase tracking-widest text-[#555566] mb-2">Unlock Date</p>
+                        <p className="text-2xl font-mono text-white">{unlockDate.toLocaleDateString('en-GB')}</p>
+                        <p className="text-[#555566] font-mono text-xs mt-1">{unlockDate.toLocaleTimeString('en-GB')}</p>
+                    </div>
                 </div>
-                <div>
-                    <div className="flex items-center gap-2 mb-2"><AlertTriangle size={14} className="text-orange-400" /><span className="text-sm font-medium text-white font-mono">What this does NOT prove</span></div>
-                    <ul className="font-mono text-xs text-zinc-400 space-y-2 ml-6 list-disc marker:text-orange-900">
-                        <li>This does not prove the token itself is safe from rug pulls.</li>
-                        <li>This does not guarantee the project's success or value.</li>
-                        <li>0xKeep is an infrastructure provider and does not endorse specific assets.</li>
-                    </ul>
+
+                {/* Metadata Links */}
+                <div className="space-y-4 mb-10">
+                    <div className="flex justify-between items-center border-b border-[#1C1C26] pb-4">
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566]">Beneficiary</span>
+                        <a href={`https://sepolia.basescan.org/address/${lock[2]}`} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 font-mono text-[11px] md:text-xs transition-colors truncate max-w-[200px] md:max-w-xs">
+                            {lock[2]}
+                        </a>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-[#1C1C26] pb-4">
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566]">Token Contract</span>
+                        <a href={`https://sepolia.basescan.org/token/${lock[0]}`} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 font-mono text-[11px] md:text-xs transition-colors truncate max-w-[200px] md:max-w-xs">
+                            {lock[0]}
+                        </a>
+                    </div>
                 </div>
+
+                {/* Marketing Toolbar & Network Pill */}
+                <div className="flex flex-wrap items-center justify-between pt-2">
+                    <div className="flex items-center gap-6">
+                        <button onClick={() => copyToClipboard(window.location.href, setIsCopied)} className="flex items-center gap-2 text-[#8B8B9E] hover:text-white transition-colors group">
+                            {isCopied ? <CheckCircle2 size={14} className="text-green-400"/> : <Copy size={14} />}
+                            <span className="font-mono text-[10px] uppercase tracking-widest">{isCopied ? "Copied" : "Copy Link"}</span>
+                        </button>
+                        <button onClick={handleShareTwitter} className="flex items-center gap-2 text-[#8B8B9E] hover:text-white transition-colors group">
+                            <Twitter size={14} className="group-hover:text-blue-400"/>
+                            <span className="font-mono text-[10px] uppercase tracking-widest">Share on X</span>
+                        </button>
+                        <button onClick={handleEmbed} className="flex items-center gap-2 text-[#8B8B9E] hover:text-white transition-colors group">
+                            {isEmbedCopied ? <CheckCircle2 size={14} className="text-green-400"/> : <Code size={14} className="group-hover:text-orange-400"/>}
+                            <span className="font-mono text-[10px] uppercase tracking-widest">{isEmbedCopied ? "Copied Code" : "Embed"}</span>
+                        </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 bg-[#0B0B0F] px-3 py-1.5 rounded-full border border-[#1C1C26] mt-4 sm:mt-0">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.8)]"></div>
+                        <span className="text-blue-400 font-mono text-[9px] uppercase tracking-wider">{getNetworkName(targetChainId)}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* RIGHT COLUMN: OWNER CONTROLS */}
+            <div className="w-full lg:w-[380px] bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6 shrink-0 flex flex-col h-fit">
+                <h3 className="font-mono uppercase text-xs text-[#8B8B9E] tracking-widest mb-6 text-center">Owner Control</h3>
+                
+                <div className="relative flex-1 flex flex-col -mx-2 px-2">
+                    
+                    {/* RESTRICTED ACCESS OVERLAY */}
+                    {(!isOwner || isWithdrawn) && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#13131A]/60 backdrop-blur-[2px] rounded-xl border border-white/5">
+                            <Lock size={24} className="text-[#555566] mb-3" />
+                            <span className="font-mono text-xs uppercase tracking-widest text-zinc-300">Restricted</span>
+                            <span className="font-sans text-[10px] text-[#8B8B9E] mt-2 text-center px-4 leading-relaxed">
+                                {isWithdrawn 
+                                    ? "This vault has already been withdrawn." 
+                                    : "Only the connected owner wallet can access these controls."}
+                            </span>
+                        </div>
+                    )}
+
+                    <div className={`space-y-6 flex-1 flex flex-col transition-all duration-300 ${(!isOwner || isWithdrawn) ? 'opacity-30 blur-[2px] pointer-events-none select-none' : ''}`}>
+                        
+                        {/* Transfer Section */}
+                        <div className="space-y-2 border border-[#1C1C26] p-4 rounded-xl bg-[#0B0B0F]/50">
+                            <div className="flex justify-between items-center mb-4 relative">
+                                <div className="flex items-center gap-2 text-[#E0A831]">
+                                    <AlertTriangle size={14} />
+                                    <span className="font-mono uppercase text-xs tracking-widest">Transfer Ownership</span>
+                                </div>
+                                <Info 
+                                    size={14} 
+                                    className="text-[#555566] hover:text-white transition-colors cursor-pointer" 
+                                    onClick={(e) => { e.stopPropagation(); toggleInfo('transfer'); }}
+                                />
+                                {openInfo === 'transfer' && (
+                                    <InfoPopup 
+                                        title="Transfer Ownership" 
+                                        description="Permanently hand over control of this lock to another wallet. This action is irreversible. The new owner will have full rights to extend or withdraw." 
+                                        className="top-6 right-0" 
+                                        onClose={() => setOpenInfo(null)}
+                                    />
+                                )}
+                            </div>
+                            <input 
+                                type="text" placeholder="0x..." disabled={!isOwner || isWithdrawn}
+                                className={`w-full bg-[#13131A] border rounded-lg p-3 text-white font-mono text-xs focus:outline-none disabled:opacity-50 mb-1 ${isInvalidTransfer ? 'border-red-500/50 focus:border-red-500' : 'border-[#1C1C26] focus:border-purple-500'}`}
+                                onChange={(e) => setTransferAddress(e.target.value)} 
+                            />
+                            {isInvalidTransfer && <p className="text-red-400 text-[9px] font-mono uppercase tracking-widest mb-3">Invalid Address</p>}
+
+                            <button 
+                                onClick={handleTransfer} disabled={!isOwner || isWithdrawn || isPending || !transferAddress || isInvalidTransfer} 
+                                className="w-full py-2.5 mt-2 rounded-full border border-white/10 text-xs font-mono uppercase tracking-widest text-[#8B8B9E] hover:text-white hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isPending && activeAction === 'transfer' ? <Loader2 className="animate-spin mx-auto" size={14}/> : "Transfer"}
+                            </button>
+                        </div>
+
+                        {/* Extend Section */}
+                        <div className="space-y-2 border border-[#1C1C26] p-4 rounded-xl bg-[#0B0B0F]/50">
+                            <div className="flex justify-between items-center mb-4 relative">
+                                <div className="flex items-center gap-2 text-[#E0A831]">
+                                    <AlertTriangle size={14} />
+                                    <span className="font-mono uppercase text-xs tracking-widest">Extend Duration</span>
+                                </div>
+                                <Info 
+                                    size={14} 
+                                    className="text-[#555566] hover:text-white transition-colors cursor-pointer" 
+                                    onClick={(e) => { e.stopPropagation(); toggleInfo('extend'); }}
+                                />
+                                {openInfo === 'extend' && (
+                                    <InfoPopup 
+                                        title="Extend Duration" 
+                                        description="Increase the time tokens remain locked. You cannot reduce the lock time. This builds trust with your community." 
+                                        className="top-6 right-0" 
+                                        onClose={() => setOpenInfo(null)}
+                                    />
+                                )}
+                            </div>
+                            <div className="relative mb-1">
+                                <input 
+                                    type="datetime-local" disabled={!isOwner || isWithdrawn}
+                                    className={`w-full bg-[#13131A] border rounded-lg p-3 text-white font-mono text-xs focus:outline-none disabled:opacity-50 ${isExtensionInvalid ? 'border-red-500/50 focus:border-red-500' : 'border-[#1C1C26] focus:border-purple-500'}`}
+                                    onChange={(e) => setExtendDate(e.target.value)} 
+                                />
+                                <Calendar className="absolute right-3 top-3 text-[#555566] pointer-events-none" size={14} />
+                            </div>
+                            {isExtensionInvalid && <p className="text-red-400 text-[9px] font-mono uppercase tracking-widest mb-3">Must be later than current unlock date</p>}
+
+                            <button 
+                                onClick={handleExtend} disabled={!isOwner || isWithdrawn || isPending || !extendDate || isExtensionInvalid} 
+                                className="w-full py-2.5 mt-2 rounded-full border border-white/10 text-xs font-mono uppercase tracking-widest text-[#8B8B9E] hover:text-white hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isPending && activeAction === 'extend' ? <Loader2 className="animate-spin mx-auto" size={14}/> : "Extend"}
+                            </button>
+                        </div>
+
+                        {/* Withdraw Button */}
+                        <div className="mt-auto pt-6 border-t border-[#1C1C26]">
+                            <button 
+                                onClick={handleWithdraw} 
+                                disabled={!isOwner || !isUnlocked || isWithdrawn || isPending} 
+                                className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-mono text-sm uppercase tracking-widest transition-all ${(!isOwner || !isUnlocked || isWithdrawn) ? 'bg-[#1A1A24] text-[#555566] cursor-not-allowed border border-white/5' : 'btn-primary'}`}
+                            >
+                                {isPending ? <Loader2 className="animate-spin" size={16} /> : "Withdraw"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* TRUST AMPLIFIER ALERTS */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-[#0A1A10] border border-[#103018] p-6 rounded-2xl">
+                <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 size={16} className="text-green-500" />
+                    <span className="text-sm font-bold text-white font-sans">What This Proves</span>
+                </div>
+                <ul className="text-xs text-zinc-400 space-y-2 ml-6 list-disc marker:text-green-800 font-sans">
+                    <li>Tokens are mathematically locked in the 0xKeep V11 contract.</li>
+                    <li>Ownership cannot be claimed or drained by 0xKeep admins.</li>
+                    <li>Withdrawal is cryptographically impossible before the unlock date.</li>
+                </ul>
+            </div>
+            
+            <div className="bg-[#1A150A] border border-[#302010] p-6 rounded-2xl">
+                <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle size={16} className="text-[#E0A831]" />
+                    <span className="text-sm font-bold text-white font-sans">What This Does NOT Prove</span>
+                </div>
+                <ul className="text-xs text-zinc-400 space-y-2 ml-6 list-disc marker:text-[#E0A831]/50 font-sans">
+                    <li>This does not guarantee the token has value.</li>
+                    <li>This does not prevent the team from selling other unlocked wallets.</li>
+                    <li>0xKeep does not endorse this project.</li>
+                </ul>
             </div>
         </div>
       </div>

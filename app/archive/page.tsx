@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
-import { Loader2, ChevronLeft, ChevronRight, Search, Download, Filter, ArrowUpDown } from "lucide-react";
-import { useAccount, useReadContracts, usePublicClient } from "wagmi";
+import { Loader2, ChevronLeft, ChevronRight, Search, Filter, ArrowUpDown } from "lucide-react";
+import { useAccount, useReadContracts } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { LockRow, VestingRow } from "@/components/DashboardRows";
 import { useLabels } from "@/hooks/useLabels";
@@ -19,23 +19,19 @@ const ChevronDownIcon = ({ className }: { className?: string }) => (
 const SUPPORTED_CHAINS = Object.keys(CONTRACT_ADDRESSES).map(Number);
 type OmniId = { rawId: bigint, chainId: number, fancyId: string };
 
-export default function Dashboard() {
-  const[activeTab, setActiveTab] = useState<'locks' | 'vesting'>('locks');
+export default function ArchiveDashboard() {
+  const [activeTab, setActiveTab] = useState<'locks' | 'vesting'>('locks');
   const { address, isConnected } = useAccount();
-  const publicClient = usePublicClient();
   const { labels } = useLabels();
-  const { archived } = useArchived(); // NEW
+  const { archived } = useArchived();
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const[searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
-  // UPDATED FILTER OPTIONS
-  const [filterType, setFilterType] = useState<'all' | 'labeled' | 'unlabeled'>('all');
+  const[filterType, setFilterType] = useState<'all' | 'labeled' | 'unlabeled'>('all');
   
-  const [currentPage, setCurrentPage] = useState(1);
+  const[currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const[isExporting, setIsExporting] = useState(false);
 
-  // 1. OMNI-CHAIN ID FETCHING
   const { data: lockIdsData, isLoading: locksLoading } = useReadContracts({
     contracts: SUPPORTED_CHAINS.map(cId => ({
         address: CONTRACT_ADDRESSES[cId] as `0x${string}`, abi: CONTRACT_ABI, functionName: 'getUserLocks', args: address ? [address] : undefined, chainId: cId
@@ -44,12 +40,12 @@ export default function Dashboard() {
 
   const { data: vestingIdsData, isLoading: vestingLoading } = useReadContracts({
     contracts: SUPPORTED_CHAINS.map(cId => ({
-        address: CONTRACT_ADDRESSES[cId] as `0x${string}`, abi: CONTRACT_ABI, functionName: 'getUserVestings', args: address ?[address] : undefined, chainId: cId
+        address: CONTRACT_ADDRESSES[cId] as `0x${string}`, abi: CONTRACT_ABI, functionName: 'getUserVestings', args: address ? [address] : undefined, chainId: cId
     })), query: { enabled: !!address }
   });
 
-  // Calculate Active Totals (Excluding Archived)
-  const activeLocksCount = useMemo(() => {
+  // Calculate Archived Totals
+  const archivedLocksCount = useMemo(() => {
       if (!lockIdsData) return 0;
       let count = 0;
       lockIdsData.forEach((res, index) => {
@@ -58,14 +54,14 @@ export default function Dashboard() {
               const ids = res.result as unknown as bigint[];
               ids.forEach(id => {
                   const fancyId = formatLockId(id, chainId);
-                  if (!archived.includes(fancyId)) count++; // Only count if NOT archived
+                  if (archived.includes(fancyId)) count++; // Only count if IS archived
               });
           }
       });
       return count;
   }, [lockIdsData, archived]);
 
-  const activeVestingsCount = useMemo(() => {
+  const archivedVestingsCount = useMemo(() => {
       if (!vestingIdsData) return 0;
       let count = 0;
       vestingIdsData.forEach((res, index) => {
@@ -74,14 +70,13 @@ export default function Dashboard() {
               const ids = res.result as unknown as bigint[];
               ids.forEach(id => {
                   const fancyId = formatVestingId(id, chainId);
-                  if (!archived.includes(fancyId)) count++; // Only count if NOT archived
+                  if (archived.includes(fancyId)) count++; // Only count if IS archived
               });
           }
       });
       return count;
   }, [vestingIdsData, archived]);
 
-  // 2. AGGREGATE
   const activeIdsList = useMemo(() => {
       const data = activeTab === 'locks' ? lockIdsData : vestingIdsData;
       if (!data) return [];
@@ -96,14 +91,13 @@ export default function Dashboard() {
       return result;
   },[activeTab, lockIdsData, vestingIdsData]);
 
-  // 3. FETCH BATCH DATA
   const { data: rowData } = useReadContracts({
     contracts: activeIdsList.map(item => ({
         address: CONTRACT_ADDRESSES[item.chainId] as `0x${string}`, abi: CONTRACT_ABI, functionName: activeTab === 'locks' ? 'locks' : 'vestings', args:[item.rawId], chainId: item.chainId
     })), query: { enabled: activeIdsList.length > 0 }
   });
 
-  // 4. FILTER & SORT (Filters out archived items)
+  // FILTER LOGIC (INCLUDES ONLY ARCHIVED)
   const processedItems = useMemo(() => {
       const mapped = activeIdsList.map((item, index) => {
           const data = rowData?.[index]?.result as any;
@@ -117,12 +111,11 @@ export default function Dashboard() {
       });
 
       const filtered = mapped.filter(item => {
-          // EXCLUDE ARCHIVED ITEMS
-          if (archived.includes(item.fancyId)) return false;
+          // EXCLUSIVE TO ARCHIVED
+          if (!archived.includes(item.fancyId)) return false;
 
           const label = labels[item.fancyId] || "";
 
-          // NEW FILTER LOGIC
           if (filterType === 'labeled' && !label) return false;
           if (filterType === 'unlabeled' && label) return false;
 
@@ -153,40 +146,33 @@ export default function Dashboard() {
   const goToNext = () => setCurrentPage((p) => Math.min(p + 1, totalPages));
   const goToPrev = () => setCurrentPage((p) => Math.max(p - 1, 1));
 
-  // Export Logic (Omitted details for brevity, remains unchanged)
-  const handleExport = () => { /* unchanged */ };
-
   return (
-    // FIX: Using h-full and flex-col to force 100% height without body scrolling
     <main className="h-full flex flex-col px-6 md:px-12 py-10 max-w-7xl mx-auto w-full overflow-hidden">
-      
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 shrink-0">
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 shrink-0">
         <div>
-          <h1 className="text-4xl md:text-5xl font-chakra font-bold text-white mb-2 tracking-tight">
-            My <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">Vaults</span>
+          <h1 className="text-4xl md:text-5xl font-chakra font-bold text-zinc-500 mb-2 tracking-tight">
+            Archived <span className="text-white">Vaults</span>
           </h1>
         </div>
-        {/* STATS AREA */}
+
+        {/* NEW: STATS AREA FOR ARCHIVE */}
         <div className="flex items-center gap-8 mt-4 md:mt-0">
             <div className="text-right">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-[#8B8B9E] block mb-1">Active Locks</span>
-                {/* UPDATED VARIABLE */}
-                <span className="text-3xl font-chakra font-bold text-white">{activeLocksCount}</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#8B8B9E] block mb-1">Archived Locks</span>
+                <span className="text-3xl font-chakra font-bold text-zinc-400">{archivedLocksCount}</span>
             </div>
             <div className="text-right">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-[#8B8B9E] block mb-1">Active Vestings</span>
-                {/* UPDATED VARIABLE */}
-                <span className="text-3xl font-chakra font-bold text-white">{activeVestingsCount}</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#8B8B9E] block mb-1">Archived Vestings</span>
+                <span className="text-3xl font-chakra font-bold text-zinc-400">{archivedVestingsCount}</span>
             </div>
         </div>
       </div>
 
-      {/* TOOLBAR */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 shrink-0">
           <div className="flex gap-2 bg-[#13131A] p-1.5 rounded-xl border border-white/5">
-              <button onClick={() => setActiveTab('locks')} className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'locks' ? 'bg-white text-black font-bold' : 'text-[#8B8B9E] hover:text-white'}`}>Liquidity Locks</button>
-              <button onClick={() => setActiveTab('vesting')} className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'vesting' ? 'bg-white text-black font-bold' : 'text-[#8B8B9E] hover:text-white'}`}>Vesting Schedules</button>
+              <button onClick={() => setActiveTab('locks')} className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'locks' ? 'bg-zinc-700 text-white font-bold' : 'text-[#8B8B9E] hover:text-white'}`}>Liquidity Locks</button>
+              <button onClick={() => setActiveTab('vesting')} className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'vesting' ? 'bg-zinc-700 text-white font-bold' : 'text-[#8B8B9E] hover:text-white'}`}>Vesting Schedules</button>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
@@ -195,7 +181,6 @@ export default function Dashboard() {
                   <Search size={14} className="absolute left-3 top-3 text-zinc-500" />
               </div>
 
-              {/* UPDATED FILTER */}
               <div className="relative">
                   <select value={filterType} onChange={(e) => setFilterType(e.target.value as any)} className="appearance-none bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-[#8B8B9E] font-mono focus:outline-none cursor-pointer hover:text-white transition-colors">
                       <option value="all">All Items</option>
@@ -206,7 +191,6 @@ export default function Dashboard() {
                   <ChevronDownIcon className="absolute right-3 top-3 text-zinc-500 pointer-events-none w-3 h-3" />
               </div>
 
-              {/* Sort */}
               <div className="relative">
                   <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as any)} className="appearance-none bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-[#8B8B9E] font-mono focus:outline-none cursor-pointer hover:text-white transition-colors">
                       <option value="newest">Newest First</option>
@@ -217,20 +201,12 @@ export default function Dashboard() {
                   <ArrowUpDown size={14} className="absolute left-3 top-3 text-zinc-500 pointer-events-none" />
                   <ChevronDownIcon className="absolute right-3 top-3 text-zinc-500 pointer-events-none w-3 h-3" />
               </div>
-
-              <button onClick={handleExport} disabled={!isConnected || processedItems.length === 0 || isExporting} className="bg-[#13131A] border border-white/5 rounded-lg px-3 py-2.5 text-[#8B8B9E] hover:text-white transition-colors disabled:opacity-50">
-                  {isExporting ? <Loader2 size={14} className="animate-spin"/> : <Download size={14} />}
-              </button>
           </div>
       </div>
 
-      {/* TABLE AREA - FIX: Internal Scrolling */}
-      <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden">
-        
-        {/* Table Header Wrapper (Synchronized scroll) */}
+      <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
         <div className="overflow-auto flex-1 relative">
           <div className="min-w-[1000px]"> 
-              {/* Sticky Header */}
               <div className="grid grid-cols-7 px-5 py-4 border-b border-[#1C1C26] text-[10px] font-mono text-[#555566] uppercase tracking-widest bg-[#0F0F14] sticky top-0 z-10">
                 <div>No.</div>
                 <div>ID / Label</div>
@@ -241,7 +217,6 @@ export default function Dashboard() {
                 <div>Action</div>
               </div>
 
-              {/* Table Body */}
               {!isConnected ? (
                 <div className="flex flex-col items-center justify-center h-[300px] text-[#555566] font-mono uppercase tracking-widest text-xs">
                     <p>Connect wallet to view vaults</p>
@@ -260,7 +235,7 @@ export default function Dashboard() {
 
                     {!idsLoading && processedItems.length === 0 && (
                         <div className="p-16 text-center text-[#555566] font-mono uppercase tracking-widest text-xs">
-                          {searchQuery ? "No matches found." : "No active vaults found."}
+                          {searchQuery ? "No matches found." : "No archived vaults found."}
                         </div>
                     )}
                 </div>
@@ -268,7 +243,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* PAGINATION FOOTER (Sticky Bottom) */}
         {isConnected && processedItems.length > 0 && (
           <div className="px-6 py-4 bg-[#0F0F14] border-t border-[#1C1C26] flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-20">
              <div className="flex items-center gap-3">

@@ -21,13 +21,27 @@ const getNetworkName = (chainId: number) => {
 export default function VestingEmbed() {
   const { id } = useParams();
   
+  // FIX 1: Handle Next.js initial render where ID might be undefined
+  if (!id) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-zinc-600" /></div>;
+
   let rawId = BigInt(0);
   let targetChainId = 84532;
+  
   try {
-    const parsed = parseId(id as string);
+    // FIX 2: Safely decode the URL in case the browser encoded it
+    const decodedId = decodeURIComponent(id as string);
+    const parsed = parseId(decodedId);
     rawId = parsed.rawId;
     targetChainId = parsed.chainId;
-  } catch (e) { console.error(e); }
+  } catch (e) { 
+    // FIX 3: Don't use console.error(e). Just show a clean fallback UI.
+    return (
+        <div className="flex h-full flex-col items-center justify-center bg-[#030305] text-white font-mono text-xs border border-white/10 rounded-2xl p-6">
+            <span className="text-red-400 mb-2">⚠ INVALID CERTIFICATE ID</span>
+            <span className="text-zinc-500">The provided ID format is incorrect.</span>
+        </div>
+    );
+  }
 
   const activeContract = CONTRACT_ADDRESSES[targetChainId];
 
@@ -35,21 +49,18 @@ export default function VestingEmbed() {
     address: activeContract,
     abi: CONTRACT_ABI,
     functionName: 'vestings',
-    args: [rawId],
+    args:[rawId],
     chainId: targetChainId,
   });
 
-  // V11 MAPPING: token(0), total(1), owner(2), decimals(3), claimed(4), start(5), cliff(6), duration(7)
-  const tokenAddress = vest ? vest[0] : undefined;
-
   const { data: tokenData } = useReadContracts({
     contracts: [
-      { address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
+      { address: vest?.[0], abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
     ],
-    query: { enabled: !!tokenAddress }
+    query: { enabled: !!vest?.[0] }
   });
 
-  if (isLoading || !vest) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-white" /></div>;
+  if (isLoading || !vest) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-zinc-600" /></div>;
 
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
   const decimals = Number(vest[3] || 18);
@@ -62,23 +73,19 @@ export default function VestingEmbed() {
   const now = Math.floor(Date.now() / 1000);
   const endTime = new Date((startTime + cliffDuration + duration) * 1000);
   
-  // Progress Calc
   const totalDuration = cliffDuration + duration;
   const timeElapsedTotal = Math.max(0, now - startTime);
   const percentTime = Math.min(100, (timeElapsedTotal / totalDuration) * 100);
-  const percentClaimed = (claimedAmount / totalAmount) * 100;
+  const percentClaimed = Math.min(100, (claimedAmount / totalAmount) * 100);
 
   return (
     <a 
       href={`${window.location.origin}/vesting/${id}`} 
       target="_blank" 
-      // HOVER EFFECTS: Purple Shadow, Border Glow, Lift
       className="flex flex-col w-full h-full bg-[#030305] border border-white/10 text-white font-sans decoration-0 cursor-pointer group relative overflow-hidden transition-all duration-500 ease-out hover:border-purple-500/30 hover:shadow-[0_0_40px_rgba(124,58,237,0.15)] hover:-translate-y-1"
     >
-      {/* Background Gradient - Brightens on Hover */}
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.15),_transparent_60%)] pointer-events-none transition-opacity duration-500 opacity-60 group-hover:opacity-100" />
 
-      {/* Header */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-white/5 relative z-10">
         <div className="flex items-center gap-2">
             <Logo className="w-5 h-5 transition-transform duration-500 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
@@ -92,14 +99,10 @@ export default function VestingEmbed() {
         </div>
       </div>
 
-      {/* Body */}
       <div className="flex-1 px-5 py-4 relative z-10 flex flex-col justify-center">
-        
-        {/* Progress Header */}
         <div className="flex justify-between items-end mb-2">
             <div>
                 <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block mb-0.5 transition-colors group-hover:text-zinc-400">Vesting</span>
-                {/* TEXT SHINE on Percentage */}
                 <span className="font-mono text-lg text-white font-medium transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
                     {percentClaimed.toFixed(0)}% <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 font-normal">Claimed</span>
                 </span>
@@ -110,7 +113,6 @@ export default function VestingEmbed() {
             </div>
         </div>
 
-        {/* Progress Bar */}
         <div className="relative h-1.5 bg-white/10 rounded-full overflow-hidden mb-3">
              <div className="absolute top-0 left-0 h-full bg-purple-500/20" style={{ width: `${percentTime}%` }} />
              <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500 group-hover:brightness-125" style={{ width: `${percentClaimed}%` }} />
@@ -122,7 +124,6 @@ export default function VestingEmbed() {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="px-5 py-3 border-t border-white/5 bg-white/[0.01] flex items-center justify-between relative z-10 group-hover:bg-white/[0.03] transition-colors">
         <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
             <CheckCircle2 size={10} className="text-purple-500" />

@@ -3,8 +3,10 @@
 @tailwind utilities;
 
 :root {
-  --background: #030305;
+  --background: #0B0B0F; /* Darker, flatter background from your mockup */
   --foreground: #ffffff;
+  --panel: #13131A; /* Slightly lighter for cards */
+  --border: rgba(255, 255, 255, 0.05);
 }
 
 body {
@@ -12,38 +14,45 @@ body {
   color: var(--foreground);
 }
 
-/* Glass Utilities */
+/* New Card Style (Flat, minimal border) */
 .glass-card {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  background-color: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
 
-.glass-panel {
-  @apply bg-[#0A0A0A]/80 backdrop-blur-md border border-white/5;
+/* Primary Action Button (The Purple/Blue Gradient) */
+.btn-primary {
+  @apply bg-gradient-to-r from-indigo-500 via-purple-500 to-purple-600 text-white font-mono uppercase tracking-widest text-xs py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
-/* Button Utilities - FORCED STYLING */
-.btn-glow {
-  @apply bg-white text-black transition-all duration-300 shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] hover:bg-zinc-200;
-  
-  /* Force Font Settings */
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.1em; /* tracking-widest */
-  font-size: 0.75rem;    /* text-xs */
-  font-weight: 500;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+/* Secondary Action Button (Dark) */
+.btn-secondary {
+  @apply bg-[#1A1A24] text-white font-mono uppercase tracking-widest text-xs py-3 px-6 rounded-lg border border-white/5 transition-all duration-300 hover:bg-[#22222F] disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
+/* Ghost Button */
 .btn-ghost {
-  @apply bg-transparent text-white border border-white/10 hover:bg-white/5 transition-colors;
-  
-  /* Force Font Settings */
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  @apply bg-transparent text-zinc-400 font-mono uppercase tracking-widest text-xs border border-white/10 hover:text-white hover:border-white/20 transition-colors;
+}
+
+/* Sidebar Active Link Effect */
+.sidebar-active {
+  @apply border-l-2 border-purple-500 bg-gradient-to-r from-purple-500/10 to-transparent text-white;
+}
+
+/* Custom Scrollbar for Omni-view Table */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2A35;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3F3F50;
 }
