@@ -95,7 +95,7 @@ export default function TokenomicsAuditPage() {
           <div className="w-full lg:w-[400px] shrink-0">
               <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6 md:p-8">
                   <div className="flex items-center gap-3 mb-6">
-                      <div className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-xs">📊</div>
+                      <div className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-xs"><PieChart size={20} /></div>
                       <h2 className="text-white font-medium text-lg font-sans">Allocation Setup</h2>
                   </div>
 
