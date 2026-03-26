@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { Calendar, Clock, Loader2, Check, Hourglass, Info, X, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, Loader2, Check, CheckCircle2, Hourglass, Info, X, AlertTriangle, ExternalLink } from "lucide-react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useSwitchChain } from "wagmi";
 import { parseUnits, parseEther, isAddress, erc20Abi } from "viem";
 import { CONTRACT_ADDRESSES, CONTRACT_ABI } from "@/lib/contract";
@@ -10,6 +10,15 @@ import Navbar from "@/components/Navbar";
 
 const getContractAddress = (chainId?: number) => {
   return CONTRACT_ADDRESSES[chainId || 84532] || CONTRACT_ADDRESSES[84532];
+};
+
+const getExplorerTxLink = (chainId: number, hash: string) => {
+    switch (chainId) {
+        case 8453: return `https://basescan.org/tx/${hash}`;
+        case 42161: return `https://arbiscan.io/tx/${hash}`;
+        case 10: return `https://optimistic.etherscan.io/tx/${hash}`;
+        default: return `https://sepolia.basescan.org/tx/${hash}`;
+    }
 };
 
 const InfoPopup = ({ title, description, onClose, className = "" }: { title: string, description: string, onClose: () => void, className?: string }) => (
@@ -41,6 +50,7 @@ export default function CreatePage() {
   // Logic State
   const[txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const[actionType, setActionType] = useState<'approve' | 'lock' | null>(null);
+  const[isSuccessScreen, setIsSuccessScreen] = useState(false);
 
   // --- VALIDATION STATE ---
   const isAddressFilled = tokenAddress.trim().length > 0;
@@ -79,18 +89,17 @@ export default function CreatePage() {
   const { writeContract, data: writeHash, isPending: isWalletLoading, error: writeError } = useWriteContract();
   const { isLoading: isTxConfirming, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash: writeHash });
 
-  // --- EFFECT LOGIC ---
+  // --- LOGIC & VALIDATION ---
   useEffect(() => {
     if (isTxSuccess) {
       refetchAllowance();
       if (actionType === 'lock' && writeHash) {
         setTxHash(writeHash);
-        alert("Protocol Secured! Redirecting to your Vaults.");
-        router.push('/');
+        setIsSuccessScreen(true); // Triggers the success UI
       }
       setActionType(null);
     }
-  },[isTxSuccess, refetchAllowance, actionType, writeHash, router]);
+  }, [isTxSuccess, refetchAllowance, actionType, writeHash]);
 
   const finalDecimals = decimals || 18;
   const amountInWei = amount ? parseUnits(amount, finalDecimals) : BigInt(0);
@@ -146,6 +155,58 @@ export default function CreatePage() {
   const feeAmount = activeTab === 'lock' ? '0.03' : '0.02';
   const displaySymbol = tokenSymbol ? String(tokenSymbol) : "TOKEN";
 
+  // --- SUCCESS SCREEN ---
+  if (isSuccessScreen) {
+    return (
+      <main className="min-h-full px-6 md:px-12 py-20 max-w-7xl mx-auto flex flex-col items-center justify-center">
+        <div className="bg-[#13131A] border border-[#1C1C26] p-10 md:p-14 rounded-2xl flex flex-col items-center text-center max-w-md w-full shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+            
+            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-6 border border-green-500/20 shadow-[0_0_20px_rgba(74,222,128,0.15)]">
+                <CheckCircle2 className="text-green-400 w-10 h-10" />
+            </div>
+            
+            <h2 className="text-3xl font-chakra font-bold text-white mb-3 uppercase tracking-tight">Protocol Secured</h2>
+            
+            <p className="text-[#8B8B9E] font-mono text-xs uppercase tracking-widest mb-10 leading-relaxed">
+                Your transaction has been confirmed on the blockchain.
+            </p>
+
+            <div className="w-full space-y-4">
+                <button 
+                    onClick={() => router.push('/')} 
+                    className="w-full btn-primary py-4 text-sm"
+                >
+                    Go to My Vaults
+                </button>
+                
+                {txHash && (
+                    <a 
+                        href={getExplorerTxLink(chain?.id || 84532, txHash)} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="w-full btn-ghost flex items-center justify-center gap-2 py-3"
+                    >
+                        View Transaction <ExternalLink size={14} />
+                    </a>
+                )}
+            </div>
+
+            <button 
+                onClick={() => { 
+                    setIsSuccessScreen(false); 
+                    setTokenAddress(""); 
+                    setAmount(""); 
+                }} 
+                className="mt-8 text-[#555566] hover:text-white transition-colors font-mono text-[10px] uppercase tracking-widest"
+            >
+                Initialize Another Vault
+            </button>
+
+        </div>
+      </main>
+    );
+  }
+  
   return (
     <main className="min-h-full px-6 md:px-12 py-10 max-w-7xl mx-auto" onClick={() => setOpenInfo(null)}>
     
