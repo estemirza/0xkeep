@@ -153,8 +153,63 @@ export default function Dashboard() {
   const goToNext = () => setCurrentPage((p) => Math.min(p + 1, totalPages));
   const goToPrev = () => setCurrentPage((p) => Math.max(p - 1, 1));
 
-  // Export Logic (Omitted details for brevity, remains unchanged)
-  const handleExport = () => { /* unchanged */ };
+  // --- CSV EXPORT HANDLER ---
+  const handleExport = async () => {
+    if (!publicClient || processedItems.length === 0) return;
+    setIsExporting(true);
+
+    try {
+        const rows = [["ID", "Label", "Network ID", "Token Address", "Amount (Raw)", "Unlock Date", "Status"]];
+        
+        // HELPER: Micro-throttle to respect Public RPC rate limits
+        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+        for (const item of processedItems) {
+            const label = labels[item.fancyId] || "";
+            if (!item.data) {
+                // If data isn't cached by multicall, fetch it manually
+                const data: any = await publicClient.readContract({
+                    address: CONTRACT_ADDRESSES[item.chainId] as `0x${string}`,
+                    abi: CONTRACT_ABI,
+                    functionName: activeTab === 'locks' ? 'locks' : 'vestings',
+                    args:[item.rawId]
+                });
+                
+                const token = data[0]; 
+                const amount = data[1]; 
+                const dateVal = activeTab === 'locks' ? data[5] : (Number(data[5]) + Number(data[6]) + Number(data[7])); 
+                const dateStr = new Date(Number(dateVal) * 1000).toISOString().split('T')[0];
+                
+                rows.push([item.fancyId, label, item.chainId.toString(), token, amount.toString(), dateStr, "Active"]);
+                
+                // THROTTLE: Wait 100ms before making the next RPC call
+                await delay(100);
+            } else {
+                // If data is already cached from the UI render, use it instantly (No throttle needed)
+                const token = item.data[0]; 
+                const amount = item.data[1]; 
+                const dateVal = activeTab === 'locks' ? item.data[5] : (Number(item.data[5]) + Number(item.data[6]) + Number(item.data[7])); 
+                const dateStr = new Date(Number(dateVal) * 1000).toISOString().split('T')[0];
+                rows.push([item.fancyId, label, item.chainId.toString(), token, amount.toString(), dateStr, "Active"]);
+            }
+        }
+
+        const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `0xKeep_${activeTab}_Report.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (e) {
+        console.error("Export failed", e);
+        alert("Export failed. Public RPC might be rate-limited. Try again in a minute.");
+    } finally {
+        setIsExporting(false);
+    }
+  };
 
   return (
     // FIX: Using h-full and flex-col to force 100% height without body scrolling
