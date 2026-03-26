@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Lock, Archive } from "lucide-react"; // Import Archive
+import { LayoutGrid, Lock, Archive, PieChart } from "lucide-react"; // Import PieChart
 import Logo from "./Logo";
 
 export default function Sidebar() {
@@ -27,6 +27,12 @@ export default function Sidebar() {
         <Link href="/create" className={`flex items-center gap-4 px-8 py-3 text-xs font-mono uppercase tracking-widest transition-colors ${pathname === '/create' ? 'sidebar-active' : 'text-[#555566] hover:text-white border-l-2 border-transparent'}`}>
           <Lock size={16} /> Create Vault
         </Link>
+        
+        {/* NEW TOKENOMICS LINK */}
+        <Link href="/tokenomics" className={`flex items-center gap-4 px-8 py-3 text-xs font-mono uppercase tracking-widest transition-colors ${pathname === '/tokenomics' ? 'sidebar-active' : 'text-[#555566] hover:text-white border-l-2 border-transparent'}`}>
+          <PieChart size={16} /> Token Audit
+        </Link>
+
         <Link href="/archive" className={`flex items-center gap-4 px-8 py-3 text-xs font-mono uppercase tracking-widest transition-colors ${pathname === '/archive' ? 'sidebar-active' : 'text-[#555566] hover:text-white border-l-2 border-transparent'}`}>
           <Archive size={16} /> Archived Vaults
         </Link>
