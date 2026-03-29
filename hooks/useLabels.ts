@@ -2,23 +2,38 @@
 
 import { useState, useEffect } from 'react';
 
+const MAX_LABEL_LENGTH = 64;
+const STORAGE_KEY = '0xkeep-labels';
+
 export function useLabels() {
   const [labels, setLabels] = useState<Record<string, string>>({});
 
-  // Load from LocalStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem('0xkeep-labels');
-    if (stored) {
-      setLabels(JSON.parse(stored));
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) setLabels(JSON.parse(stored));
+    } catch {
+      // Storage was corrupted — clear it and recover cleanly
+      localStorage.removeItem(STORAGE_KEY);
+      setLabels({});
     }
   }, []);
 
-  // Save Label
   const setLabel = (id: string, name: string) => {
-    const newLabels = { ...labels, [id]: name };
+    // FIX H5: Enforce maximum label length
+    const trimmed = name.trim().slice(0, MAX_LABEL_LENGTH);
+    const newLabels = { ...labels, [id]: trimmed };
     setLabels(newLabels);
-    localStorage.setItem('0xkeep-labels', JSON.stringify(newLabels));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newLabels));
   };
 
-  return { labels, setLabel };
+  const removeLabel = (id: string) => {
+    // FIX H6: Actually delete the key instead of storing empty string
+    const newLabels = { ...labels };
+    delete newLabels[id];
+    setLabels(newLabels);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newLabels));
+  };
+
+  return { labels, setLabel, removeLabel };
 }

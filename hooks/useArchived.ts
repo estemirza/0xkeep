@@ -3,28 +3,35 @@
 import { useState, useEffect } from 'react';
 
 export function useArchived() {
-    const [archived, setArchived] = useState<string[]>([]);
+  const [archived, setArchived] = useState<string[]>([]);
 
-    const load = () => {
-        const stored = localStorage.getItem('0xkeep-archived');
-        if (stored) setArchived(JSON.parse(stored));
-    };
+  const load = () => {
+    try {
+      const stored = localStorage.getItem('0xkeep-archived');
+      if (stored) setArchived(JSON.parse(stored));
+    } catch {
+      // Storage was corrupted — clear it and recover cleanly
+      localStorage.removeItem('0xkeep-archived');
+      setArchived([]);
+    }
+  };
 
-    useEffect(() => {
-        load();
-        window.addEventListener('archive-updated', load);
-        return () => window.removeEventListener('archive-updated', load);
-    },[]);
+  useEffect(() => {
+    load();
+    window.addEventListener('archive-updated', load);
+    return () => window.removeEventListener('archive-updated', load);
+  }, []);
 
-    const toggleArchive = (id: string) => {
-        const stored = localStorage.getItem('0xkeep-archived');
-        let current = stored ? JSON.parse(stored) : [];
-        const newArchived = current.includes(id) ? current.filter((a: string) => a !== id) :[...current, id];
-        
-        localStorage.setItem('0xkeep-archived', JSON.stringify(newArchived));
-        setArchived(newArchived);
-        window.dispatchEvent(new Event('archive-updated')); // Triggers re-render instantly
-    };
+  const toggleArchive = (id: string) => {
+    // FIX H2: Use state as source of truth, not localStorage
+    const newArchived = archived.includes(id)
+      ? archived.filter((a) => a !== id)
+      : [...archived, id];
 
-    return { archived, toggleArchive };
+    setArchived(newArchived);
+    localStorage.setItem('0xkeep-archived', JSON.stringify(newArchived));
+    window.dispatchEvent(new Event('archive-updated'));
+  };
+
+  return { archived, toggleArchive };
 }
