@@ -199,7 +199,7 @@ export default function CreatePage() {
 
   const handleLock = () => {
     if (!isInputValid || !activeContract) return;
-    setActionType('lock');
+    setActionType(activeTab === 'lock' ? 'lock' : 'vesting');
 
     if (activeTab === 'lock') {
       const unlockTimestamp = Math.floor(new Date(unlockDate).getTime() / 1000);
