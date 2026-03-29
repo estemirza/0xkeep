@@ -199,7 +199,7 @@ export default function LockCertificatePage() {
   // ── RENDER ────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[#0B0B0F] pb-20" onClick={() => setOpenInfo(null)}>
-      <Navbar />
+
       <div className="max-w-5xl mx-auto px-4 md:px-6 mt-12 flex flex-col items-center">
 
         {/* HEADER */}
