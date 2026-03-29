@@ -13,7 +13,9 @@ const getNetworkName = (chainId: number) => {
         84532: "Base Sepolia",
         8453: "Base",
         42161: "Arbitrum",
-        10: "Optimism"
+        421614: "ARB Sepolia",
+        10: "Optimism",
+        11155420: "OP Sepolia"
     };
     return names[chainId] || "Unknown Network";
 };
