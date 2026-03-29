@@ -306,11 +306,23 @@ export default function Dashboard() {
                     {idsLoading && <div className="p-12 flex justify-center text-zinc-500"><Loader2 className="animate-spin" /></div>}
 
                     {activeTab === 'locks' && currentItems.map((item, idx) => (
-                        <LockRow key={item.fancyId} lockId={item.rawId} chainId={item.chainId} index={startIndex + idx + 1} />
+                        <LockRow
+                          key={item.fancyId}
+                          lockId={item.rawId}
+                          chainId={item.chainId}
+                          index={startIndex + idx + 1}
+                          prefetchedData={item.data}
+                        />
                     ))}
                     
                     {activeTab === 'vesting' && currentItems.map((item, idx) => (
-                        <VestingRow key={item.fancyId} vestingId={item.rawId} chainId={item.chainId} index={startIndex + idx + 1} />
+                        <VestingRow
+                          key={item.fancyId}
+                          vestingId={item.rawId}
+                          chainId={item.chainId}
+                          index={startIndex + idx + 1}
+                          prefetchedData={item.data}
+                        />
                     ))}
 
                     {!idsLoading && processedItems.length === 0 && (

@@ -90,21 +90,23 @@ const EditableLabel = ({ id, currentLabel, onSave }: {
 // LOCK ROW
 // ─────────────────────────────────────────────
 
-export function LockRow({ lockId, chainId, index }: {
-  lockId: bigint; chainId: number; index: number;
+export function LockRow({ lockId, chainId, index, prefetchedData }: {
+  lockId: bigint; chainId: number; index: number; prefetchedData?: any;
 }) {
   const activeContract = getContractAddress(chainId);
   const { labels, setLabel } = useLabels();
   const { archived, toggleArchive } = useArchived();
 
-  const { data: lock, isLoading } = useReadContract({
+  const { data: fetchedLock, isLoading } = useReadContract({
     address: activeContract,
     abi: CONTRACT_ABI,
     functionName: 'locks',
     args: [lockId],
     chainId: chainId,
-    query: { enabled: !!activeContract },
+    query: { enabled: !!activeContract && !prefetchedData },
   });
+
+  const lock = prefetchedData || fetchedLock;
 
   const tokenAddress = lock ? lock[0] : undefined;
   const { data: tokenData } = useReadContracts({
@@ -195,22 +197,24 @@ export function LockRow({ lockId, chainId, index }: {
 // VESTING ROW
 // ─────────────────────────────────────────────
 
-export function VestingRow({ vestingId, chainId, index }: {
-  vestingId: bigint; chainId: number; index: number;
+export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
+  vestingId: bigint; chainId: number; index: number; prefetchedData?: any;
 }) {
   // FIX D2: Same address logic as LockRow
   const activeContract = getContractAddress(chainId);
   const { labels, setLabel } = useLabels();
   const { archived, toggleArchive } = useArchived();
 
-  const { data: vest, isLoading } = useReadContract({
+  const { data: fetchedVest, isLoading } = useReadContract({
     address: activeContract,
     abi: CONTRACT_ABI,
     functionName: 'vestings',
     args: [vestingId],
     chainId: chainId,
-    query: { enabled: !!activeContract },
+    query: { enabled: !!activeContract && !prefetchedData },
   });
+
+  const vest = prefetchedData || fetchedVest;
 
   const tokenAddress = vest ? vest[0] : undefined;
   const { data: tokenData } = useReadContracts({
