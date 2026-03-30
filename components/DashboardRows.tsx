@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { useReadContract, useReadContracts, useAccount } from "wagmi";
+import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { formatUnits, erc20Abi } from "viem";
 import { Loader2, Pencil, Check, X, Archive } from "lucide-react";
@@ -16,15 +16,11 @@ import { useArchived } from "@/hooks/useArchived";
 // HELPERS
 // ─────────────────────────────────────────────
 
-const shortAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-
-// FIX D2: Single consistent address resolver — no silent testnet fallback
 const getContractAddress = (chainId?: number): `0x${string}` | undefined => {
   if (!chainId) return undefined;
   return CONTRACT_ADDRESSES[chainId];
 };
 
-// FIX D6: Network badge uses correct color per chain from shared constant
 const NetworkBadge = ({ chainId }: { chainId: number }) => {
   const name  = CHAIN_NAMES[chainId]  || "UNKNOWN";
   const color = CHAIN_COLORS[chainId] || "bg-gray-500";
@@ -44,9 +40,8 @@ const EditableLabel = ({ id, currentLabel, onSave }: {
   id: string; currentLabel: string; onSave: (val: string) => void;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [val, setVal] = useState(currentLabel);
+  const [val, setVal]             = useState(currentLabel);
 
-  // Sync val when currentLabel changes externally
   if (!isEditing && val !== currentLabel) setVal(currentLabel);
 
   const handleSave = (e: React.MouseEvent) => {
@@ -58,12 +53,11 @@ const EditableLabel = ({ id, currentLabel, onSave }: {
     return (
       <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
         <input
-          autoFocus type="text"
+          autoFocus type="text" maxLength={64}
           className="bg-black/50 border border-white/20 rounded px-1 py-0.5 text-xs text-white w-24 focus:outline-none"
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onClick={(e) => e.stopPropagation()}
-          maxLength={64}
         />
         <button onClick={handleSave} className="text-green-400"><Check size={12} /></button>
         <button onClick={() => setIsEditing(false)} className="text-red-400"><X size={12} /></button>
@@ -88,15 +82,20 @@ const EditableLabel = ({ id, currentLabel, onSave }: {
 
 // ─────────────────────────────────────────────
 // LOCK ROW
+// prefetchedData: values are strings (BigInts were serialized for safe prop passing)
 // ─────────────────────────────────────────────
 
 export function LockRow({ lockId, chainId, index, prefetchedData }: {
-  lockId: bigint; chainId: number; index: number; prefetchedData?: any;
+  lockId: bigint;
+  chainId: number;
+  index: number;
+  prefetchedData?: Record<string, any> | null;
 }) {
-  const activeContract = getContractAddress(chainId);
-  const { labels, setLabel } = useLabels();
+  const activeContract            = getContractAddress(chainId);
+  const { labels, setLabel }      = useLabels();
   const { archived, toggleArchive } = useArchived();
 
+  // Only fetch from chain if we don't already have prefetched data
   const { data: fetchedLock, isLoading } = useReadContract({
     address: activeContract,
     abi: CONTRACT_ABI,
@@ -106,16 +105,17 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
     query: { enabled: !!activeContract && !prefetchedData },
   });
 
-  const lock = prefetchedData || fetchedLock;
+  // Use prefetched data if available, otherwise use fetched data
+  const rawLock = prefetchedData ?? fetchedLock;
 
-  const tokenAddress = lock ? lock[0] : undefined;
+  const tokenAddress = rawLock ? rawLock[0] as `0x${string}` : undefined;
   const { data: tokenData } = useReadContracts({
-    contracts: [{ address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: chainId }],
+    contracts: [{ address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId }],
     query: { enabled: !!tokenAddress },
   });
   const { data: price } = useTokenPrice(chainId, tokenAddress);
 
-  if (isLoading || !lock) {
+  if ((isLoading && !prefetchedData) || !rawLock) {
     return (
       <div className="grid grid-cols-7 p-5 border-b border-[#1C1C26] animate-pulse">
         <div className="col-span-7 h-4 bg-white/5 rounded"></div>
@@ -123,15 +123,18 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
     );
   }
 
-  const rawAmount   = lock[1];
-  const decimals    = Number(lock[3] || 18);
-  const isWithdrawn = lock[4];
-  const unlockTime  = Number(lock[5]);
+  // Re-convert stringified BigInts back to BigInt for math
+  const rawAmount   = BigInt(rawLock[1] ?? BigInt(0));
+  const decimals    = Number(rawLock[3] ?? 18);
+  const isWithdrawn = Boolean(rawLock[4]);
+  const unlockTime  = Number(rawLock[5] ?? 0);
 
   const tokenSymbol     = tokenData?.[0]?.result?.toString() || "ERC20";
-  const amountFormatted = Number(formatUnits(rawAmount, decimals)).toLocaleString(undefined, { maximumFractionDigits: 2 });
-  const usdValue        = price && price > 0
-    ? (Number(formatUnits(rawAmount, decimals)) * price).toLocaleString(undefined, { style: 'currency', currency: 'USD' })
+  const amountFormatted = Number(formatUnits(rawAmount, decimals))
+    .toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const usdValue = price && price > 0
+    ? (Number(formatUnits(rawAmount, decimals)) * price)
+        .toLocaleString(undefined, { style: 'currency', currency: 'USD' })
     : null;
 
   const unlockDate = new Date(unlockTime * 1000);
@@ -139,9 +142,13 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
 
   let statusDisplay;
   if (isWithdrawn) {
-    statusDisplay = <span className="text-[#555566] text-[10px] uppercase tracking-widest line-through">WITHDRAWN</span>;
+    statusDisplay = (
+      <span className="text-[#555566] text-[10px] uppercase tracking-widest line-through">WITHDRAWN</span>
+    );
   } else if (isUnlocked) {
-    statusDisplay = <span className="text-green-400 text-[10px] uppercase tracking-widest">UNLOCKED</span>;
+    statusDisplay = (
+      <span className="text-green-400 text-[10px] uppercase tracking-widest">UNLOCKED</span>
+    );
   } else {
     const timeString = formatDistanceToNow(unlockDate, { addSuffix: true });
     statusDisplay = (
@@ -152,12 +159,11 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
     );
   }
 
-  const fancyId   = formatLockId(lockId, chainId);
-  const userLabel = labels[fancyId] || "";
+  const fancyId    = formatLockId(lockId, chainId);
+  const userLabel  = labels[fancyId] || "";
   const isArchived = archived.includes(fancyId);
 
   return (
-    // FIX D7: No target="_blank" — same tab navigation for own dashboard
     <Link
       href={`/lock/${fancyId}`}
       className="grid grid-cols-7 min-w-[900px] p-5 border-b border-[#1C1C26] text-sm font-mono hover:bg-white/[0.02] transition-colors cursor-pointer group items-center"
@@ -169,7 +175,7 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
       </div>
       <div><NetworkBadge chainId={chainId} /></div>
       <div className="flex items-center gap-2">
-        <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-white">T</div>
+        <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-white font-bold">T</div>
         <span className="text-zinc-300">{tokenSymbol}</span>
       </div>
       <div className="flex flex-col">
@@ -198,11 +204,13 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
 // ─────────────────────────────────────────────
 
 export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
-  vestingId: bigint; chainId: number; index: number; prefetchedData?: any;
+  vestingId: bigint;
+  chainId: number;
+  index: number;
+  prefetchedData?: Record<string, any> | null;
 }) {
-  // FIX D2: Same address logic as LockRow
-  const activeContract = getContractAddress(chainId);
-  const { labels, setLabel } = useLabels();
+  const activeContract              = getContractAddress(chainId);
+  const { labels, setLabel }        = useLabels();
   const { archived, toggleArchive } = useArchived();
 
   const { data: fetchedVest, isLoading } = useReadContract({
@@ -214,16 +222,16 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
     query: { enabled: !!activeContract && !prefetchedData },
   });
 
-  const vest = prefetchedData || fetchedVest;
+  const rawVest = prefetchedData ?? fetchedVest;
 
-  const tokenAddress = vest ? vest[0] : undefined;
+  const tokenAddress = rawVest ? rawVest[0] as `0x${string}` : undefined;
   const { data: tokenData } = useReadContracts({
-    contracts: [{ address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: chainId }],
+    contracts: [{ address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId }],
     query: { enabled: !!tokenAddress },
   });
   const { data: price } = useTokenPrice(chainId, tokenAddress);
 
-  if (isLoading || !vest) {
+  if ((isLoading && !prefetchedData) || !rawVest) {
     return (
       <div className="grid grid-cols-7 p-5 border-b border-[#1C1C26] animate-pulse">
         <div className="col-span-7 h-4 bg-white/5 rounded"></div>
@@ -231,21 +239,22 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
     );
   }
 
-  const decimals      = Number(vest[3] || 18);
-  const totalRaw      = vest[1];
-  const claimedRaw    = vest[4];
-  const startTime     = Number(vest[5]);
-  const cliffDuration = Number(vest[6]);
-  const duration      = Number(vest[7]);
+  const decimals      = Number(rawVest[3] ?? 18);
+  const totalRaw      = BigInt(rawVest[1] ?? BigInt(0));
+  const claimedRaw    = BigInt(rawVest[4] ?? BigInt(0));
+  const startTime     = Number(rawVest[5] ?? 0);
+  const cliffDuration = Number(rawVest[6] ?? 0);
+  const duration      = Number(rawVest[7] ?? 0);
 
-  const tokenSymbol   = tokenData?.[0]?.result?.toString() || "ERC20";
-  const totalAmount   = Number(formatUnits(totalRaw, decimals)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const tokenSymbol    = tokenData?.[0]?.result?.toString() || "ERC20";
+  const totalAmount    = Number(formatUnits(totalRaw, decimals))
+    .toLocaleString(undefined, { maximumFractionDigits: 2 });
   const isFullyClaimed = claimedRaw >= totalRaw;
-  const usdValue      = price && price > 0
-    ? (Number(formatUnits(totalRaw, decimals)) * price).toLocaleString(undefined, { style: 'currency', currency: 'USD' })
+  const usdValue       = price && price > 0
+    ? (Number(formatUnits(totalRaw, decimals)) * price)
+        .toLocaleString(undefined, { style: 'currency', currency: 'USD' })
     : null;
 
-  // FIX D3: Detect cliff period for correct status display
   const now      = Math.floor(Date.now() / 1000);
   const cliffEnd = startTime + cliffDuration;
   const vestEnd  = new Date((cliffEnd + duration) * 1000);
@@ -253,9 +262,10 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
 
   let statusDisplay;
   if (isFullyClaimed) {
-    statusDisplay = <span className="text-[#555566] text-[10px] uppercase tracking-widest line-through">COMPLETED</span>;
+    statusDisplay = (
+      <span className="text-[#555566] text-[10px] uppercase tracking-widest line-through">COMPLETED</span>
+    );
   } else if (inCliff) {
-    // FIX D3: Show "In Cliff" instead of "Active" when nothing is claimable
     statusDisplay = (
       <div className="flex flex-col items-start">
         <span className="text-amber-400 text-[10px] uppercase tracking-widest">IN CLIFF</span>
@@ -265,11 +275,12 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
       </div>
     );
   } else {
-    const timeString = formatDistanceToNow(vestEnd, { addSuffix: true });
     statusDisplay = (
       <div className="flex flex-col items-start">
         <span className="text-blue-400 text-[10px] uppercase tracking-widest">ACTIVE</span>
-        <span className="text-zinc-500 text-[9px] lowercase">ends {timeString}</span>
+        <span className="text-zinc-500 text-[9px] lowercase">
+          ends {formatDistanceToNow(vestEnd, { addSuffix: true })}
+        </span>
       </div>
     );
   }
@@ -290,7 +301,7 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
       </div>
       <div><NetworkBadge chainId={chainId} /></div>
       <div className="flex items-center gap-2">
-        <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-white">V</div>
+        <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-white font-bold">V</div>
         <span className="text-zinc-300">{tokenSymbol}</span>
       </div>
       <div className="flex flex-col">
