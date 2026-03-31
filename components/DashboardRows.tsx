@@ -82,20 +82,20 @@ const EditableLabel = ({ id, currentLabel, onSave }: {
 
 // ─────────────────────────────────────────────
 // LOCK ROW
-// prefetchedData: values are strings (BigInts were serialized for safe prop passing)
 // ─────────────────────────────────────────────
 
-export function LockRow({ lockId, chainId, index, prefetchedData }: {
+export function LockRow({ lockId, chainId, index, prefetchedData, isWithdrawnLocal, onArchive }: {
   lockId: bigint;
   chainId: number;
   index: number;
   prefetchedData?: Record<string, any> | null;
+  isWithdrawnLocal?: boolean;  // true = came from localStorage withdrawn list
+  onArchive?: () => void;      // called when user clicks Archive on a withdrawn lock
 }) {
-  const activeContract            = getContractAddress(chainId);
-  const { labels, setLabel }      = useLabels();
+  const activeContract              = getContractAddress(chainId);
+  const { labels, setLabel }        = useLabels();
   const { archived, toggleArchive } = useArchived();
 
-  // Only fetch from chain if we don't already have prefetched data
   const { data: fetchedLock, isLoading } = useReadContract({
     address: activeContract,
     abi: CONTRACT_ABI,
@@ -105,7 +105,6 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
     query: { enabled: !!activeContract && !prefetchedData },
   });
 
-  // Use prefetched data if available, otherwise use fetched data
   const rawLock = prefetchedData ?? fetchedLock;
 
   const tokenAddress = rawLock ? rawLock[0] as `0x${string}` : undefined;
@@ -123,10 +122,10 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
     );
   }
 
-  // Re-convert stringified BigInts back to BigInt for math
   const rawAmount   = BigInt(rawLock[1] ?? BigInt(0));
   const decimals    = Number(rawLock[3] ?? 18);
-  const isWithdrawn = Boolean(rawLock[4]);
+  // A lock is withdrawn if the contract flag is set OR it came from the local withdrawn list
+  const isWithdrawn = Boolean(rawLock[4]) || isWithdrawnLocal;
   const unlockTime  = Number(rawLock[5] ?? 0);
 
   const tokenSymbol     = tokenData?.[0]?.result?.toString() || "ERC20";
@@ -139,6 +138,10 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
 
   const unlockDate = new Date(unlockTime * 1000);
   const isUnlocked = Date.now() > unlockTime * 1000;
+
+  const fancyId    = formatLockId(lockId, chainId);
+  const userLabel  = labels[fancyId] || "";
+  const isArchived = archived.includes(fancyId);
 
   let statusDisplay;
   if (isWithdrawn) {
@@ -158,10 +161,6 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
       </div>
     );
   }
-
-  const fancyId    = formatLockId(lockId, chainId);
-  const userLabel  = labels[fancyId] || "";
-  const isArchived = archived.includes(fancyId);
 
   return (
     <Link
@@ -186,7 +185,16 @@ export function LockRow({ lockId, chainId, index, prefetchedData }: {
       <div className="flex items-center">
         {isWithdrawn ? (
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleArchive(fancyId); }}
+            onClick={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              // If a custom onArchive handler is passed (from dashboard), use it
+              // Otherwise fall back to the default toggleArchive
+              if (onArchive) {
+                onArchive();
+              } else {
+                toggleArchive(fancyId);
+              }
+            }}
             className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-[10px] uppercase tracking-widest"
           >
             <Archive size={12} /> {isArchived ? "Unarchive" : "Archive"}
@@ -260,6 +268,10 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
   const vestEnd  = new Date((cliffEnd + duration) * 1000);
   const inCliff  = now < cliffEnd && !isFullyClaimed;
 
+  const fancyId    = formatVestingId(vestingId, chainId);
+  const userLabel  = labels[fancyId] || "";
+  const isArchived = archived.includes(fancyId);
+
   let statusDisplay;
   if (isFullyClaimed) {
     statusDisplay = (
@@ -284,10 +296,6 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
       </div>
     );
   }
-
-  const fancyId    = formatVestingId(vestingId, chainId);
-  const userLabel  = labels[fancyId] || "";
-  const isArchived = archived.includes(fancyId);
 
   return (
     <Link

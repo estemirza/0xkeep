@@ -7,7 +7,7 @@ import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { LockRow, VestingRow } from "@/components/DashboardRows";
 import { useLabels } from "@/hooks/useLabels";
 import { useArchived } from "@/hooks/useArchived";
-import { formatLockId, formatVestingId } from "@/lib/formatter";
+import { formatLockId, formatVestingId, parseId } from "@/lib/formatter";
 import { formatUnits } from "viem";
 import Navbar from "@/components/Navbar";
 
@@ -17,11 +17,6 @@ const ChevronDownIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// ─────────────────────────────────────────────
-// SAFE BIGINT SERIALIZER
-// Converts BigInt values to strings so React
-// DevTools and JSON.stringify don't crash.
-// ─────────────────────────────────────────────
 const safePrefetchedData = (data: any): Record<string, any> | null => {
   if (!data) return null;
   try {
@@ -41,6 +36,7 @@ type OmniId = {
   fancyId: string;
   data: Record<string, any> | null;
   normalizedAmount: number;
+  isWithdrawnLocal?: boolean; // true if from localStorage, not on-chain array
 };
 
 export default function Dashboard() {
@@ -48,7 +44,7 @@ export default function Dashboard() {
   const { address, isConnected }    = useAccount();
   const publicClient                = usePublicClient();
   const { labels }                  = useLabels();
-  const { archived }                = useArchived();
+  const { archived, withdrawn, toggleArchive } = useArchived();
 
   const [searchQuery, setSearchQuery]   = useState("");
   const [sortOrder, setSortOrder]       = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
@@ -80,7 +76,7 @@ export default function Dashboard() {
     query: { enabled: !!address },
   });
 
-  // ── ACTIVE COUNTS (excluding archived) ──
+  // ── ACTIVE COUNTS (excluding archived, including withdrawn) ──
   const activeLocksCount = useMemo(() => {
     if (!lockIdsData) return 0;
     let count = 0;
@@ -88,12 +84,17 @@ export default function Dashboard() {
       if (res.status === 'success' && res.result) {
         const chainId = SUPPORTED_CHAINS[index];
         (res.result as unknown as bigint[]).forEach(id => {
-          if (!archived.includes(formatLockId(id, chainId))) count++;
+          const fancyId = formatLockId(id, chainId);
+          if (!archived.includes(fancyId)) count++;
         });
       }
     });
+    // Also count withdrawn locks that are not archived
+    withdrawn.forEach(fancyId => {
+      if (!archived.includes(fancyId)) count++;
+    });
     return count;
-  }, [lockIdsData, archived]);
+  }, [lockIdsData, archived, withdrawn]);
 
   const activeVestingsCount = useMemo(() => {
     if (!vestingIdsData) return 0;
@@ -109,27 +110,48 @@ export default function Dashboard() {
     return count;
   }, [vestingIdsData, archived]);
 
-  // ── FLATTEN IDS INTO A SINGLE LIST ──
+  // ── FLATTEN IDS — ON-CHAIN + WITHDRAWN ──
   const activeIdsList = useMemo(() => {
     const data = activeTab === 'locks' ? lockIdsData : vestingIdsData;
     if (!data) return [];
-    const result: { rawId: bigint; chainId: number; fancyId: string }[] = [];
+    const result: { rawId: bigint; chainId: number; fancyId: string; isWithdrawnLocal?: boolean }[] = [];
+    const seenFancyIds = new Set<string>();
+
+    // On-chain IDs
     data.forEach((res, index) => {
       if (res.status === 'success' && res.result) {
         const chainId = SUPPORTED_CHAINS[index];
         (res.result as unknown as bigint[]).forEach(id => {
-          result.push({
-            rawId: id,
-            chainId,
-            fancyId: activeTab === 'locks'
-              ? formatLockId(id, chainId)
-              : formatVestingId(id, chainId),
-          });
+          const fancyId = activeTab === 'locks'
+            ? formatLockId(id, chainId)
+            : formatVestingId(id, chainId);
+          seenFancyIds.add(fancyId);
+          result.push({ rawId: id, chainId, fancyId });
         });
       }
     });
+
+    // Withdrawn locks from localStorage (locks tab only)
+    // These were removed from the on-chain array after withdrawal
+    // but we still want to show them in the dashboard
+    if (activeTab === 'locks') {
+      withdrawn.forEach(fancyId => {
+        if (seenFancyIds.has(fancyId)) return; // already in on-chain list
+        try {
+          const parsed = parseId(fancyId);
+          if (parsed.type !== 'lock') return;
+          result.push({
+            rawId: parsed.rawId,
+            chainId: parsed.chainId,
+            fancyId,
+            isWithdrawnLocal: true,
+          });
+        } catch { /* invalid fancyId, skip */ }
+      });
+    }
+
     return result;
-  }, [activeTab, lockIdsData, vestingIdsData]);
+  }, [activeTab, lockIdsData, vestingIdsData, withdrawn]);
 
   // ── BATCH FETCH ROW DATA ──
   const { data: rowData } = useReadContracts({
@@ -146,12 +168,9 @@ export default function Dashboard() {
   // ── PROCESS: FILTER + SORT ──
   const processedItems: OmniId[] = useMemo(() => {
     const mapped = activeIdsList.map((item, index) => {
-      const raw = rowData?.[index]?.result as any;
-
-      // Serialize BigInts safely for prop passing to rows
+      const raw      = rowData?.[index]?.result as any;
       const safeData = safePrefetchedData(raw);
 
-      // Compute normalized amount for sorting
       let normalizedAmount = 0;
       if (raw) {
         const rawAmount = raw[1] ? BigInt(raw[1]) : BigInt(0);
@@ -159,16 +178,18 @@ export default function Dashboard() {
         normalizedAmount = Number(formatUnits(rawAmount, decimals));
       }
 
-      return { ...item, data: safeData, normalizedAmount };
+      return {
+        ...item,
+        data: safeData,
+        normalizedAmount,
+        isWithdrawnLocal: item.isWithdrawnLocal ?? false,
+      };
     });
 
-    // Filter
     const filtered = mapped.filter(item => {
-      // Exclude archived
       if (archived.includes(item.fancyId)) return false;
 
       const label = labels[item.fancyId] || "";
-
       if (filterType === 'labeled'   && !label) return false;
       if (filterType === 'unlabeled' &&  label) return false;
 
@@ -180,7 +201,6 @@ export default function Dashboard() {
       );
     });
 
-    // Sort — BigInt comparison without Number() precision loss
     filtered.sort((a, b) => {
       if (sortOrder === 'newest') {
         const diff = b.rawId - a.rawId;
@@ -205,8 +225,7 @@ export default function Dashboard() {
   const totalPages         = Math.ceil(totalFilteredItems / itemsPerPage) || 1;
   const startIndex         = (currentPage - 1) * itemsPerPage;
   const currentItems       = processedItems.slice(startIndex, startIndex + itemsPerPage);
-
-  const idsLoading = activeTab === 'locks' ? locksLoading : vestingLoading;
+  const idsLoading         = activeTab === 'locks' ? locksLoading : vestingLoading;
 
   useEffect(() => { setCurrentPage(1); }, [activeTab, itemsPerPage, searchQuery, sortOrder, filterType]);
 
@@ -218,7 +237,6 @@ export default function Dashboard() {
     if (!publicClient || processedItems.length === 0) return;
     setIsExporting(true);
 
-    // Safe stringifier for any value including BigInt
     const str = (val: any): string => {
       if (val === null || val === undefined) return "";
       if (typeof val === 'bigint') return val.toString();
@@ -232,21 +250,16 @@ export default function Dashboard() {
 
       for (const item of processedItems) {
         const label = labels[item.fancyId] || "";
-
-        let token   = "";
-        let amount  = "";
-        let dateStr = "";
+        let token = "", amount = "", dateStr = "";
 
         if (item.data) {
-          // Use cached data — no RPC call needed
-          token   = str(item.data[0]);
-          amount  = str(item.data[1]);
+          token  = str(item.data[0]);
+          amount = str(item.data[1]);
           const dateVal = activeTab === 'locks'
             ? Number(item.data[5] ?? 0)
             : Number(item.data[5] ?? 0) + Number(item.data[6] ?? 0) + Number(item.data[7] ?? 0);
           dateStr = new Date(dateVal * 1000).toISOString().split('T')[0];
         } else {
-          // Fallback: fetch from chain
           try {
             const data: any = await publicClient.readContract({
               address: CONTRACT_ADDRESSES[item.chainId] as `0x${string}`,
@@ -260,26 +273,20 @@ export default function Dashboard() {
               ? Number(data[5] ?? 0)
               : Number(data[5] ?? 0) + Number(data[6] ?? 0) + Number(data[7] ?? 0);
             dateStr = new Date(dateVal * 1000).toISOString().split('T')[0];
-            await delay(100); // throttle RPC calls
-          } catch {
-            dateStr = "error";
-          }
+            await delay(100);
+          } catch { dateStr = "error"; }
         }
 
         rows.push([
-          str(item.fancyId),
-          str(label),
-          str(item.chainId),
-          str(token),
-          str(amount),
-          str(dateStr),
-          "Active",
+          str(item.fancyId), str(label), str(item.chainId),
+          str(token), str(amount), str(dateStr),
+          item.isWithdrawnLocal ? "Withdrawn" : "Active",
         ]);
       }
 
-      const csvContent  = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
-      const encodedUri  = encodeURI(csvContent);
-      const link        = document.createElement("a");
+      const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link       = document.createElement("a");
       link.setAttribute("href", encodedUri);
       link.setAttribute("download", `0xKeep_${activeTab}_Report.csv`);
       document.body.appendChild(link);
@@ -320,39 +327,17 @@ export default function Dashboard() {
       {/* TOOLBAR */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 shrink-0">
         <div className="flex gap-2 bg-[#13131A] p-1.5 rounded-xl border border-white/5">
-          <button
-            onClick={() => setActiveTab('locks')}
-            className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'locks' ? 'bg-white text-black font-bold' : 'text-[#8B8B9E] hover:text-white'}`}
-          >
-            Liquidity Locks
-          </button>
-          <button
-            onClick={() => setActiveTab('vesting')}
-            className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'vesting' ? 'bg-white text-black font-bold' : 'text-[#8B8B9E] hover:text-white'}`}
-          >
-            Vesting Schedules
-          </button>
+          <button onClick={() => setActiveTab('locks')} className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'locks' ? 'bg-white text-black font-bold' : 'text-[#8B8B9E] hover:text-white'}`}>Liquidity Locks</button>
+          <button onClick={() => setActiveTab('vesting')} className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'vesting' ? 'bg-white text-black font-bold' : 'text-[#8B8B9E] hover:text-white'}`}>Vesting Schedules</button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-          {/* Search */}
           <div className="relative min-w-[200px]">
-            <input
-              type="text" placeholder="Search..."
-              className="w-full bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-3 py-2.5 text-[11px] text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <input type="text" placeholder="Search..." className="w-full bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-3 py-2.5 text-[11px] text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             <Search size={14} className="absolute left-3 top-3 text-zinc-500" />
           </div>
-
-          {/* Filter */}
           <div className="relative">
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
-              className="appearance-none bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-[#8B8B9E] font-mono focus:outline-none cursor-pointer hover:text-white transition-colors"
-            >
+            <select value={filterType} onChange={(e) => setFilterType(e.target.value as any)} className="appearance-none bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-[#8B8B9E] font-mono focus:outline-none cursor-pointer hover:text-white transition-colors">
               <option value="all">All Items</option>
               <option value="labeled">Labeled Only</option>
               <option value="unlabeled">Unlabeled Only</option>
@@ -360,14 +345,8 @@ export default function Dashboard() {
             <Filter size={14} className="absolute left-3 top-3 text-zinc-500 pointer-events-none" />
             <ChevronDownIcon className="absolute right-3 top-3 text-zinc-500 pointer-events-none w-3 h-3" />
           </div>
-
-          {/* Sort */}
           <div className="relative">
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as any)}
-              className="appearance-none bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-[#8B8B9E] font-mono focus:outline-none cursor-pointer hover:text-white transition-colors"
-            >
+            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as any)} className="appearance-none bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-[#8B8B9E] font-mono focus:outline-none cursor-pointer hover:text-white transition-colors">
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
               <option value="highest">Highest Amount</option>
@@ -376,13 +355,7 @@ export default function Dashboard() {
             <ArrowUpDown size={14} className="absolute left-3 top-3 text-zinc-500 pointer-events-none" />
             <ChevronDownIcon className="absolute right-3 top-3 text-zinc-500 pointer-events-none w-3 h-3" />
           </div>
-
-          {/* Export */}
-          <button
-            onClick={handleExport}
-            disabled={!isConnected || processedItems.length === 0 || isExporting}
-            className="bg-[#13131A] border border-white/5 rounded-lg px-3 py-2.5 text-[#8B8B9E] hover:text-white transition-colors disabled:opacity-50"
-          >
+          <button onClick={handleExport} disabled={!isConnected || processedItems.length === 0 || isExporting} className="bg-[#13131A] border border-white/5 rounded-lg px-3 py-2.5 text-[#8B8B9E] hover:text-white transition-colors disabled:opacity-50">
             {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
           </button>
         </div>
@@ -392,29 +365,17 @@ export default function Dashboard() {
       <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="overflow-auto flex-1 relative">
           <div className="min-w-[1000px]">
-            {/* Sticky Header */}
             <div className="grid grid-cols-7 px-5 py-4 border-b border-[#1C1C26] text-[10px] font-mono text-[#555566] uppercase tracking-widest bg-[#0F0F14] sticky top-0 z-10">
-              <div>No.</div>
-              <div>ID / Label</div>
-              <div>Network</div>
-              <div>Token</div>
-              <div>Amount</div>
-              <div>Status</div>
-              <div>Action</div>
+              <div>No.</div><div>ID / Label</div><div>Network</div><div>Token</div><div>Amount</div><div>Status</div><div>Action</div>
             </div>
 
-            {/* Body */}
             {!isConnected ? (
               <div className="flex flex-col items-center justify-center h-[300px] text-[#555566] font-mono uppercase tracking-widest text-xs">
                 <p>Connect wallet to view vaults</p>
               </div>
             ) : (
               <div className="divide-y divide-[#1C1C26]">
-                {idsLoading && (
-                  <div className="p-12 flex justify-center text-zinc-500">
-                    <Loader2 className="animate-spin" />
-                  </div>
-                )}
+                {idsLoading && <div className="p-12 flex justify-center text-zinc-500"><Loader2 className="animate-spin" /></div>}
 
                 {activeTab === 'locks' && currentItems.map((item, idx) => (
                   <LockRow
@@ -423,6 +384,10 @@ export default function Dashboard() {
                     chainId={item.chainId}
                     index={startIndex + idx + 1}
                     prefetchedData={item.data}
+                    isWithdrawnLocal={item.isWithdrawnLocal}
+                    onArchive={() => {
+                      toggleArchive(item.fancyId);
+                    }}
                   />
                 ))}
 
@@ -446,33 +411,19 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* PAGINATION */}
         {isConnected && processedItems.length > 0 && (
           <div className="px-6 py-4 bg-[#0F0F14] border-t border-[#1C1C26] flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-20">
             <div className="flex items-center gap-3">
               <span className="text-[#555566] font-mono text-[10px] uppercase tracking-widest">Rows:</span>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="bg-transparent border border-white/10 text-[#8B8B9E] font-mono text-[10px] rounded px-2 py-1 focus:outline-none cursor-pointer"
-              >
-                <option value={10}>10</option>
-                <option value={30}>30</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
+              <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="bg-transparent border border-white/10 text-[#8B8B9E] font-mono text-[10px] rounded px-2 py-1 focus:outline-none cursor-pointer">
+                <option value={10}>10</option><option value={30}>30</option><option value={50}>50</option><option value={100}>100</option>
               </select>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-[#555566] font-mono text-[10px] uppercase tracking-widest">
-                Page {currentPage} of {totalPages}
-              </span>
+              <span className="text-[#555566] font-mono text-[10px] uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
               <div className="flex gap-2">
-                <button onClick={goToPrev} disabled={currentPage === 1} className="text-[#8B8B9E] hover:text-white disabled:opacity-30 transition-colors">
-                  <ChevronLeft size={14} />
-                </button>
-                <button onClick={goToNext} disabled={currentPage === totalPages} className="text-[#8B8B9E] hover:text-white disabled:opacity-30 transition-colors">
-                  <ChevronRight size={14} />
-                </button>
+                <button onClick={goToPrev} disabled={currentPage === 1} className="text-[#8B8B9E] hover:text-white disabled:opacity-30 transition-colors"><ChevronLeft size={14} /></button>
+                <button onClick={goToNext} disabled={currentPage === totalPages} className="text-[#8B8B9E] hover:text-white disabled:opacity-30 transition-colors"><ChevronRight size={14} /></button>
               </div>
             </div>
           </div>

@@ -4,20 +4,15 @@ import Navbar from "@/components/Navbar";
 import { useParams } from "next/navigation";
 import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
-import { parseId, getExplorerAddressLink, getExplorerTokenLink, getExplorerTxLink, CHAIN_NAMES } from "@/lib/formatter";
+import { parseId, getExplorerAddressLink, getExplorerTokenLink, getExplorerTxLink, CHAIN_NAMES, formatLockId } from "@/lib/formatter";
 import { erc20Abi, formatUnits, isAddressEqual } from "viem";
 import { Loader2, ShieldCheck, AlertTriangle, Calendar, CheckCircle2, Copy, Twitter, Code, ExternalLink, Lock, Info, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { isAddress } from "viem";
+import { useArchived } from "@/hooks/useArchived";
 
-// ─────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────
 const TWITTER_HANDLE = "@0xkeep_official";
 
-// ─────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────
 const InfoPopup = ({ title, description, onClose, className = "" }: {
   title: string; description: string; onClose: () => void; className?: string;
 }) => (
@@ -30,13 +25,11 @@ const InfoPopup = ({ title, description, onClose, className = "" }: {
   </div>
 );
 
-// ─────────────────────────────────────────────
-// PAGE
-// ─────────────────────────────────────────────
 export default function LockCertificatePage() {
   const { id } = useParams();
   const { address, chain } = useAccount();
   const { switchChain } = useSwitchChain();
+  const { addWithdrawn } = useArchived();
 
   let rawId = BigInt(0);
   let targetChainId = 84532;
@@ -52,11 +45,11 @@ export default function LockCertificatePage() {
 
   const activeContract = CONTRACT_ADDRESSES[targetChainId];
 
-  const [extendDate, setExtendDate] = useState("");
+  const [extendDate, setExtendDate]     = useState("");
   const [transferAddress, setTransferAddress] = useState("");
-  const [isCopied, setIsCopied] = useState(false);
+  const [isCopied, setIsCopied]         = useState(false);
   const [isEmbedCopied, setIsEmbedCopied] = useState(false);
-  const [openInfo, setOpenInfo] = useState<string | null>(null);
+  const [openInfo, setOpenInfo]         = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<'none' | 'extend' | 'transfer' | 'withdraw'>('none');
 
   const { data: lock, isLoading, isError, refetch } = useReadContract({
@@ -77,18 +70,25 @@ export default function LockCertificatePage() {
   const { writeContract, data: txHash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  // FIX L2: Move refetch into useEffect — never call side effects during render
+  // FIX L2: refetch in useEffect — never during render
   useEffect(() => {
     if (isSuccess) {
       refetch();
-      setTransferAddress(""); // FIX L5: Clear transfer input after success
+      setTransferAddress("");
+
+      // When withdrawal succeeds, save to withdrawn list
+      // so the dashboard can still show this lock
+      if (activeAction === 'withdraw') {
+        const fancyId = formatLockId(rawId, targetChainId);
+        addWithdrawn(fancyId);
+      }
+
       setActiveAction('none');
     }
-  }, [isSuccess, refetch]);
+  }, [isSuccess, refetch, activeAction, rawId, targetChainId, addWithdrawn]);
 
   // ── ERROR & LOADING STATES ────────────────────────────
 
-  // FIX L3: Guard when contract address is undefined
   if (!activeContract || parseError) {
     return (
       <div className="min-h-screen bg-[#0B0B0F] flex items-center justify-center">
@@ -108,7 +108,6 @@ export default function LockCertificatePage() {
     );
   }
 
-  // FIX L9: Show error state instead of infinite spinner
   if (isError || !lock) {
     return (
       <div className="min-h-screen bg-[#0B0B0F] flex items-center justify-center">
@@ -126,20 +125,19 @@ export default function LockCertificatePage() {
   const amount      = Number(formatUnits(lock[1], decimals)).toLocaleString(undefined, { maximumFractionDigits: 2 });
   const unlockDate  = new Date(Number(lock[5]) * 1000);
 
-  // FIX L4: Use isAddressEqual to handle checksum differences
   const isOwner    = address && lock[2] ? isAddressEqual(address, lock[2] as `0x${string}`) : false;
   const isWithdrawn = lock[4];
   const isUnlocked  = Date.now() > unlockDate.getTime();
 
   // ── VALIDATIONS ───────────────────────────────────────
-  const selectedExtend    = extendDate ? new Date(extendDate) : null;
+  const selectedExtend     = extendDate ? new Date(extendDate) : null;
   const isExtensionInvalid = selectedExtend
     ? (selectedExtend.getTime() <= unlockDate.getTime() || selectedExtend.getTime() <= Date.now())
     : false;
   const isTransferAddressFilled = transferAddress.trim().length > 0;
   const isInvalidTransfer       = isTransferAddressFilled && !isAddress(transferAddress);
 
-  // ── STATUS DISPLAY ────────────────────────────────────
+  // ── STATUS ────────────────────────────────────────────
   let statusColor = "text-green-400";
   let statusBg    = "bg-green-400 shadow-[0_0_8px_#4ade80]";
   let statusText  = "LOCKED";
@@ -199,14 +197,13 @@ export default function LockCertificatePage() {
   // ── RENDER ────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[#0B0B0F] pb-20" onClick={() => setOpenInfo(null)}>
-
+      
       <div className="max-w-5xl mx-auto px-4 md:px-6 mt-12 flex flex-col items-center">
 
         {/* HEADER */}
         <div className="flex flex-col items-center mb-12 text-center">
-          {/* FIX L8: Explorer link uses correct chain */}
-          
-            <a href={getExplorerAddressLink(targetChainId, activeContract)}
+          <a
+            href={getExplorerAddressLink(targetChainId, activeContract)}
             target="_blank" rel="noreferrer"
             className="flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full border border-white/5 bg-[#13131A] hover:bg-[#1A1A24] transition-colors cursor-pointer group"
           >
@@ -227,7 +224,7 @@ export default function LockCertificatePage() {
               </div>
             )}
 
-            {/* Status Row */}
+            {/* Status */}
             <div className="flex justify-between items-start mb-10">
               <div>
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566] block mb-2">Status</span>
@@ -254,12 +251,12 @@ export default function LockCertificatePage() {
               </div>
             </div>
 
-            {/* Metadata Links — FIX L1: all links use correct chain explorer */}
+            {/* Metadata Links */}
             <div className="space-y-4 mb-10">
               <div className="flex justify-between items-center border-b border-[#1C1C26] pb-4">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566]">Beneficiary</span>
-                
-                  <a href={getExplorerAddressLink(targetChainId, lock[2])}
+                <a
+                  href={getExplorerAddressLink(targetChainId, lock[2])}
                   target="_blank" rel="noreferrer"
                   className="text-purple-400 hover:text-purple-300 font-mono text-[11px] md:text-xs transition-colors truncate max-w-[200px] md:max-w-xs"
                 >
@@ -268,8 +265,8 @@ export default function LockCertificatePage() {
               </div>
               <div className="flex justify-between items-center border-b border-[#1C1C26] pb-4">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566]">Token Contract</span>
-                
-                  <a href={getExplorerTokenLink(targetChainId, lock[0])}
+                <a
+                  href={getExplorerTokenLink(targetChainId, lock[0])}
                   target="_blank" rel="noreferrer"
                   className="text-purple-400 hover:text-purple-300 font-mono text-[11px] md:text-xs transition-colors truncate max-w-[200px] md:max-w-xs"
                 >
@@ -342,7 +339,6 @@ export default function LockCertificatePage() {
                     disabled={!isOwner || isWithdrawn || isPending || !transferAddress || isInvalidTransfer}
                     className="w-full py-2.5 mt-2 rounded-full border border-white/10 text-xs font-mono uppercase tracking-widest text-[#8B8B9E] hover:text-white hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {/* FIX L6: Check activeAction so only this button spins */}
                     {isPending && activeAction === 'transfer' ? <Loader2 className="animate-spin mx-auto" size={14} /> : "Transfer"}
                   </button>
                 </div>
