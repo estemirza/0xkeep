@@ -6,7 +6,7 @@ import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { formatUnits, erc20Abi } from "viem";
 import { Loader2, Pencil, Check, X, Archive } from "lucide-react";
 import Link from "next/link";
-import { formatLockId, formatVestingId, CHAIN_NAMES, CHAIN_COLORS } from "@/lib/formatter";
+import { formatLockId, formatVestingId, CHAIN_NAMES, CHAIN_COLORS, formatTokenAmount } from "@/lib/formatter";
 import { useLabels } from "@/hooks/useLabels";
 import { formatDistanceToNow } from "date-fns";
 import { useTokenPrice } from "@/hooks/useTokenPrice";
@@ -129,8 +129,7 @@ export function LockRow({ lockId, chainId, index, prefetchedData, isWithdrawnLoc
   const unlockTime  = Number(rawLock[5] ?? 0);
 
   const tokenSymbol     = tokenData?.[0]?.result?.toString() || "ERC20";
-  const amountFormatted = Number(formatUnits(rawAmount, decimals))
-    .toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const amountFormatted = formatTokenAmount(Number(formatUnits(rawAmount, decimals)));
   const usdValue = price && price > 0
     ? (Number(formatUnits(rawAmount, decimals)) * price)
         .toLocaleString(undefined, { style: 'currency', currency: 'USD' })
@@ -255,8 +254,7 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
   const duration      = Number(rawVest[7] ?? 0);
 
   const tokenSymbol    = tokenData?.[0]?.result?.toString() || "ERC20";
-  const totalAmount    = Number(formatUnits(totalRaw, decimals))
-    .toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const totalAmount    = formatTokenAmount(Number(formatUnits(totalRaw, decimals)));
   const isFullyClaimed = claimedRaw >= totalRaw;
   const usdValue       = price && price > 0
     ? (Number(formatUnits(totalRaw, decimals)) * price)
