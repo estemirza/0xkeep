@@ -5,17 +5,27 @@ import { RainbowKitProvider, getDefaultConfig, darkTheme } from '@rainbow-me/rai
 import { WagmiProvider, http } from 'wagmi';
 import { baseSepolia, base, arbitrum, optimism, arbitrumSepolia, optimismSepolia } from 'wagmi/chains';
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { TESTNETS_ENABLED } from '@/lib/contract';
+
+// WalletConnect project ID comes from env only (Vercel + .env.local).
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+if (!projectId) {
+  throw new Error('NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. Add it to .env.local (dev) or the Vercel project env (prod).');
+}
+
+const mainnets = [base, arbitrum, optimism] as const;
+const testnets = [baseSepolia, arbitrumSepolia, optimismSepolia] as const;
 
 const config = getDefaultConfig({
   appName: '0xKeep',
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'f8faee28443487e40c6db484720d0de1',
-  chains: [base, arbitrum, optimism, baseSepolia, arbitrumSepolia, optimismSepolia],
+  projectId,
+  chains: TESTNETS_ENABLED ? [...mainnets, ...testnets] : [...mainnets],
   transports: {
     // Mainnets — private Alchemy RPCs (no rate limiting)
     [base.id]:     http(process.env.NEXT_PUBLIC_RPC_BASE     || 'https://mainnet.base.org'),
     [arbitrum.id]: http(process.env.NEXT_PUBLIC_RPC_ARBITRUM || 'https://arb1.arbitrum.io/rpc'),
     [optimism.id]: http(process.env.NEXT_PUBLIC_RPC_OPTIMISM || 'https://mainnet.optimism.io'),
-    // Testnets — public RPCs are fine, low traffic
+    // Testnets — only used when NEXT_PUBLIC_ENABLE_TESTNETS=true
     [baseSepolia.id]:     http(),
     [arbitrumSepolia.id]: http(),
     [optimismSepolia.id]: http(),

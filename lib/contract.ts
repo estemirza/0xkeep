@@ -3,16 +3,25 @@
 // ─────────────────────────────────────────────
 // CONTRACT ADDRESSES — V12 Deployment
 // ─────────────────────────────────────────────
-export const CONTRACT_ADDRESSES: Record<number, `0x${string}`> = {
-  // Testnets
-  84532:   "0x22049F0686ff6F17d1175f0f74dF8C67F7ce50ea", // Base Sepolia
-  421614:  "0xA2e1496692B41DD69291138933A9800e049c5221", // Arbitrum Sepolia
-  11155420:"0xA2e1496692B41DD69291138933A9800e049c5221", // Optimism Sepolia
+// Testnets are hidden in production. Set NEXT_PUBLIC_ENABLE_TESTNETS=true
+// in .env.local to get them back for local development.
+export const TESTNETS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_TESTNETS === "true";
 
-  // Mainnets
+const MAINNET_ADDRESSES: Record<number, `0x${string}`> = {
   8453:  "0x49bF4Ded143402B2fD89d8d284e477Dfdc9fa02B", // Base Mainnet
   42161: "0xDC9bFb15C28486590Cbf58F3FEA9ADbEB9B0334c", // Arbitrum One
   10:    "0x1Ecf87D69c4a5c8D10ffb7D73e8ABB415043f866", // Optimism Mainnet
+};
+
+const TESTNET_ADDRESSES: Record<number, `0x${string}`> = {
+  84532:   "0x22049F0686ff6F17d1175f0f74dF8C67F7ce50ea", // Base Sepolia
+  421614:  "0xA2e1496692B41DD69291138933A9800e049c5221", // Arbitrum Sepolia
+  11155420:"0xA2e1496692B41DD69291138933A9800e049c5221", // Optimism Sepolia
+};
+
+export const CONTRACT_ADDRESSES: Record<number, `0x${string}`> = {
+  ...MAINNET_ADDRESSES,
+  ...(TESTNETS_ENABLED ? TESTNET_ADDRESSES : {}),
 };
 
 // ─────────────────────────────────────────────
