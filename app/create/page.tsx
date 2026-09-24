@@ -125,6 +125,13 @@ export default function CreatePage() {
     args: address && activeContract ? [address, activeContract] : undefined,
   });
 
+  const { data: tokenBalance } = useReadContract({
+    address: isAddress(tokenAddress) ? tokenAddress as `0x${string}` : undefined,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+  });
+
   const { writeContract, data: writeHash, isPending: isWalletLoading, error: writeError } = useWriteContract();
   const { isLoading: isTxConfirming, isSuccess: isTxSuccess, data: receipt } = useWaitForTransactionReceipt({ hash: writeHash });
 
@@ -188,6 +195,8 @@ export default function CreatePage() {
   const amountInWei      = amount ? parseUnits(amount, finalDecimals) : BigInt(0);
   const currentAllowance = allowance || BigInt(0);
   const needsApproval    = amountInWei > BigInt(0) && amountInWei > currentAllowance;
+  // Catch "not enough tokens" here; otherwise the wallet just says "failed" with no reason.
+  const insufficientBalance = tokenBalance !== undefined && amountInWei > tokenBalance;
   const isBusy           = isWalletLoading || isTxConfirming;
   const displaySymbol    = tokenSymbol ? String(tokenSymbol) : "TOKEN";
 
@@ -204,7 +213,7 @@ export default function CreatePage() {
   };
 
   const handleLock = () => {
-    if (!isInputValid || !activeContract || !feeReady) return;
+    if (!isInputValid || !activeContract || !feeReady || insufficientBalance) return;
     setActionType(activeTab === 'lock' ? 'lock' : 'vesting');
 
     if (activeTab === 'lock') {
@@ -455,6 +464,7 @@ export default function CreatePage() {
                   value={amount} onChange={(e) => setAmount(e.target.value)}
                 />
                 {isInvalidAmount && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest mt-1">Amount must be greater than 0</p>}
+                {insufficientBalance && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest mt-1">Not enough {tokenSymbol ? String(tokenSymbol) : "tokens"} in this wallet</p>}
               </div>
             </div>
           </div>
@@ -551,7 +561,7 @@ export default function CreatePage() {
             <div className="space-y-4">
               <button
                 onClick={handleApprove}
-                disabled={!needsApproval || !isInputValid || isBusy}
+                disabled={!needsApproval || !isInputValid || isBusy || insufficientBalance}
                 className={`w-full flex items-center justify-center gap-2 ${needsApproval && isInputValid ? 'btn-secondary' : 'btn-ghost opacity-50 cursor-not-allowed border-0 bg-transparent py-3'}`}
               >
                 {actionType === 'approve' && isBusy ? (
@@ -563,7 +573,7 @@ export default function CreatePage() {
 
               <button
                 onClick={handleLock}
-                disabled={needsApproval || !isInputValid || isBusy || !feeReady}
+                disabled={needsApproval || !isInputValid || isBusy || !feeReady || insufficientBalance}
                 className={`w-full flex items-center justify-center gap-2 ${!needsApproval && isInputValid ? 'btn-primary py-4 text-sm' : 'bg-[#1A1A24] text-[#555566] font-mono text-sm py-4 rounded-xl cursor-not-allowed transition-all border border-transparent'}`}
               >
                 {actionType === 'lock' && isBusy ? (
