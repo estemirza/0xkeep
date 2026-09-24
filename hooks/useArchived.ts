@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { CONTRACT_ADDRESSES } from '@/lib/contract';
+import { parseId } from '@/lib/formatter';
 
 const ARCHIVED_KEY  = '0xkeep-archived';
 const WITHDRAWN_KEY = '0xkeep-withdrawn';
@@ -55,5 +57,12 @@ export function useArchived() {
   // withdrawn[] is permanent — it tracks that a lock was ever withdrawn.
   // archived[] controls visibility. Never remove from withdrawn on archive/unarchive.
 
-  return { archived, withdrawn, toggleArchive, addWithdrawn };
+  // Only expose withdrawn IDs on chains the app currently supports. Old testnet
+  // IDs (e.g. 0xK-BSL-3) stay in storage but are hidden while testnets are off;
+  // otherwise the dashboard counts them and their rows spin forever.
+  const visibleWithdrawn = withdrawn.filter(id => {
+    try { return parseId(id).chainId in CONTRACT_ADDRESSES; } catch { return false; }
+  });
+
+  return { archived, withdrawn: visibleWithdrawn, toggleArchive, addWithdrawn };
 }
