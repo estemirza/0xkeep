@@ -78,9 +78,11 @@ export default function CreatePage() {
 
   const lockFee    = lockFeeData    ?? parseEther("0.03");
   const vestingFee = vestingFeeData ?? parseEther("0.02");
+  // `!== undefined`, not a truthy check: a 0n fee (free Base instance) is falsy
+  // and would otherwise fall back to showing "0.03".
   const feeAmount  = activeTab === 'lock'
-    ? (lockFeeData    ? (Number(lockFee)    / 1e18).toString() : "0.03")
-    : (vestingFeeData ? (Number(vestingFee) / 1e18).toString() : "0.02");
+    ? (lockFeeData    !== undefined ? (Number(lockFee)    / 1e18).toString() : "0.03")
+    : (vestingFeeData !== undefined ? (Number(vestingFee) / 1e18).toString() : "0.02");
 
   // ── VALIDATION ────────────────────────────────────────
   const isAddressFilled   = tokenAddress.trim().length > 0;
