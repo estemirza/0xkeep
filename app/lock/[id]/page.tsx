@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { useParams } from "next/navigation";
 import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
-import { parseId, getExplorerAddressLink, getExplorerTokenLink, getExplorerTxLink, CHAIN_NAMES, formatLockId } from "@/lib/formatter";
+import { parseId, getExplorerAddressLink, getExplorerTokenLink, getExplorerTxLink, CHAIN_NAMES, formatLockId, formatTokenAmount } from "@/lib/formatter";
 import { erc20Abi, formatUnits, isAddressEqual } from "viem";
 import { Loader2, ShieldCheck, AlertTriangle, Calendar, CheckCircle2, Copy, Twitter, Code, ExternalLink, Lock, Info, X } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -87,6 +87,16 @@ export default function LockCertificatePage() {
     }
   }, [isSuccess, refetch, activeAction, rawId, targetChainId, addWithdrawn]);
 
+  // RPC servers behind a load balancer can lag a block behind the one that
+  // confirmed the tx, so the refetch above may still return the old state.
+  // Re-read a couple more times so the page updates without a manual refresh.
+  useEffect(() => {
+    if (!isSuccess) return;
+    const t1 = setTimeout(() => refetch(), 2000);
+    const t2 = setTimeout(() => refetch(), 6000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [isSuccess, txHash, refetch]);
+
   // ── ERROR & LOADING STATES ────────────────────────────
 
   if (!activeContract || parseError) {
@@ -122,7 +132,7 @@ export default function LockCertificatePage() {
   // ── DATA ─────────────────────────────────────────────
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
   const decimals    = Number(lock[3] ?? 18);
-  const amount      = Number(formatUnits(lock[1], decimals)).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const amount      = formatTokenAmount(Number(formatUnits(lock[1], decimals)));
   const unlockDate  = new Date(Number(lock[5]) * 1000);
 
   const isOwner    = address && lock[2] ? isAddressEqual(address, lock[2] as `0x${string}`) : false;

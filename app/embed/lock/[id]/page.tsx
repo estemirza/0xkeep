@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
-import { parseId } from "@/lib/formatter";
+import { parseId, formatTokenAmount } from "@/lib/formatter";
 import { erc20Abi, formatUnits } from "viem";
 import { Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -63,7 +63,7 @@ export default function LockEmbed() {
 
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
   const decimals = Number(lock[3] ?? 18);
-  const amount = Number(formatUnits(lock[1], decimals)).toLocaleString();
+  const amount = formatTokenAmount(Number(formatUnits(lock[1], decimals)));
   const unlockDate = new Date(Number(lock[5]) * 1000);
   const isUnlocked = Date.now() > unlockDate.getTime();
 

@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
-import { parseId } from "@/lib/formatter";
+import { parseId, formatTokenAmount } from "@/lib/formatter";
 import { erc20Abi, formatUnits } from "viem";
 import { Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -111,7 +111,7 @@ export default function VestingEmbed() {
             </div>
             <div className="text-right">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block mb-0.5">Total</span>
-                <span className="font-mono text-xs text-zinc-300 group-hover:text-white transition-colors">{totalAmount.toLocaleString()} {tokenSymbol}</span>
+                <span className="font-mono text-xs text-zinc-300 group-hover:text-white transition-colors">{formatTokenAmount(totalAmount)} {tokenSymbol}</span>
             </div>
         </div>
 

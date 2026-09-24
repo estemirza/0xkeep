@@ -172,3 +172,14 @@ export const CHAIN_COLORS: Record<number, string> = {
   421614:  "bg-blue-300",
   11155420:"bg-red-400",
 };
+// ─────────────────────────────────────────────
+// TOKEN AMOUNT DISPLAY
+// A fixed 2-decimal rounding turns small amounts (0.001 WETH) into "0".
+// Big numbers keep 2 decimals; amounts below 1 keep 4 significant digits.
+// ─────────────────────────────────────────────
+export function formatTokenAmount(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return "0";
+  if (n < 0.000001) return "<0.000001";
+  if (n < 1) return n.toLocaleString(undefined, { maximumSignificantDigits: 4 });
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}

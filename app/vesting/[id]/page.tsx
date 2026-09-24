@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { useParams } from "next/navigation";
 import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
-import { parseId, getExplorerAddressLink, getExplorerTokenLink, CHAIN_NAMES } from "@/lib/formatter";
+import { parseId, getExplorerAddressLink, getExplorerTokenLink, CHAIN_NAMES, formatTokenAmount } from "@/lib/formatter";
 import { erc20Abi, formatUnits, isAddressEqual } from "viem";
 import { Loader2, CheckCircle2, Copy, Twitter, Code, AlertTriangle, Lock, Info, X } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -84,6 +84,16 @@ export default function VestingCertificatePage() {
       setActiveAction('none');
     }
   }, [isSuccess, refetch]);
+
+  // RPC servers behind a load balancer can lag a block behind the one that
+  // confirmed the tx, so the refetch above may still return the old state.
+  // Re-read a couple more times so the page updates without a manual refresh.
+  useEffect(() => {
+    if (!isSuccess) return;
+    const t1 = setTimeout(() => refetch(), 2000);
+    const t2 = setTimeout(() => refetch(), 6000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [isSuccess, txHash, refetch]);
 
   // ── ERROR & LOADING STATES ────────────────────────────
 
@@ -195,7 +205,7 @@ export default function VestingCertificatePage() {
   };
 
   const handleShareTwitter = () => {
-    const text = `I just started a vesting schedule on ${TWITTER_HANDLE}.\n\n📈 Vesting ID: #${id}\n💎 Total: ${totalAmount.toLocaleString()} ${tokenSymbol}\n\nVerify proof here:`;
+    const text = `I just started a vesting schedule on ${TWITTER_HANDLE}.\n\n📈 Vesting ID: #${id}\n💎 Total: ${formatTokenAmount(totalAmount)} ${tokenSymbol}\n\nVerify proof here:`;
     const url  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
     window.open(url, '_blank');
   };
@@ -266,7 +276,7 @@ export default function VestingCertificatePage() {
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566] block mb-2">Total Allocation</span>
                 <div className="flex items-baseline gap-2 md:justify-end">
                   <p className="text-3xl md:text-4xl font-mono text-white break-all">
-                    {totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {formatTokenAmount(totalAmount)}
                   </p>
                   <p className="text-xl font-mono text-white">{tokenSymbol}</p>
                 </div>
@@ -287,13 +297,13 @@ export default function VestingCertificatePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-2xl font-mono text-white">
-                    {claimedAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {formatTokenAmount(claimedAmount)}
                   </p>
                   <p className="text-[10px] font-mono uppercase tracking-widest text-[#555566] mt-1">Claimed So Far</p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-mono text-white">
-                    {claimableNow.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                    {formatTokenAmount(claimableNow)}
                   </p>
                   <p className="text-[10px] font-mono uppercase tracking-widest text-[#555566] mt-1">
                     {inCliff ? "Available After Cliff" : "Available to Claim"}
@@ -403,7 +413,7 @@ export default function VestingCertificatePage() {
                       {inCliff ? "Unlocks After Cliff" : "Available to Claim"}
                     </p>
                     <p className="text-2xl font-mono text-white">
-                      {claimableNow.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                      {formatTokenAmount(claimableNow)}
                     </p>
                     <p className="text-[#555566] font-mono text-xs mt-1">{tokenSymbol}</p>
                   </div>
