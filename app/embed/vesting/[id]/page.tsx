@@ -5,6 +5,7 @@ import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { parseId, formatTokenAmount } from "@/lib/formatter";
 import { erc20Abi, formatUnits } from "viem";
+import { useNow } from "@/hooks/useNow";
 import { Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import Logo from "@/components/Logo";
 
@@ -55,6 +56,7 @@ export default function VestingEmbed() {
     chainId: targetChainId,
   });
 
+  const nowMs = useNow(10000); // re-check locked/unlocked + vesting progress as time passes
   const { data: tokenData } = useReadContracts({
     contracts: [
       { address: vest?.[0], abi: erc20Abi, functionName: 'symbol', chainId: targetChainId },
@@ -72,7 +74,7 @@ export default function VestingEmbed() {
   const cliffDuration = Number(vest[6]);
   const duration = Number(vest[7]);
   
-  const now = Math.floor(Date.now() / 1000);
+  const now = Math.floor(nowMs / 1000);
   const endTime = new Date((startTime + cliffDuration + duration) * 1000);
   
   const totalDuration = cliffDuration + duration;

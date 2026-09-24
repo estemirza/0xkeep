@@ -6,6 +6,7 @@ import { useAccount, useReadContract, useReadContracts, useWriteContract, useWai
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { parseId, getExplorerAddressLink, getExplorerTokenLink, getExplorerTxLink, CHAIN_NAMES, formatLockId, formatTokenAmount } from "@/lib/formatter";
 import { erc20Abi, formatUnits, isAddressEqual } from "viem";
+import { useNow } from "@/hooks/useNow";
 import { Loader2, ShieldCheck, AlertTriangle, Calendar, CheckCircle2, Copy, Twitter, Code, ExternalLink, Lock, Info, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { isAddress } from "viem";
@@ -30,6 +31,7 @@ export default function LockCertificatePage() {
   const { address, chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { addWithdrawn } = useArchived();
+  const nowMs = useNow(1000); // re-check locked/unlocked + vesting progress as time passes
 
   let rawId = BigInt(0);
   let targetChainId = 8453;
@@ -137,12 +139,12 @@ export default function LockCertificatePage() {
 
   const isOwner    = address && lock[2] ? isAddressEqual(address, lock[2] as `0x${string}`) : false;
   const isWithdrawn = lock[4];
-  const isUnlocked  = Date.now() > unlockDate.getTime();
+  const isUnlocked  = nowMs > unlockDate.getTime();
 
   // ── VALIDATIONS ───────────────────────────────────────
   const selectedExtend     = extendDate ? new Date(extendDate) : null;
   const isExtensionInvalid = selectedExtend
-    ? (selectedExtend.getTime() <= unlockDate.getTime() || selectedExtend.getTime() <= Date.now())
+    ? (selectedExtend.getTime() <= unlockDate.getTime() || selectedExtend.getTime() <= nowMs)
     : false;
   const isTransferAddressFilled = transferAddress.trim().length > 0;
   const isInvalidTransfer       = isTransferAddressFilled && !isAddress(transferAddress);
