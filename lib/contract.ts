@@ -8,7 +8,9 @@
 export const TESTNETS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_TESTNETS === "true";
 
 const MAINNET_ADDRESSES: Record<number, `0x${string}`> = {
-  8453:  "0x49bF4Ded143402B2fD89d8d284e477Dfdc9fa02B", // Base Mainnet
+  // Base: growth-phase instance, 0 ETH fees (deployed 2026-09-24).
+  // The original 0.03 ETH Base instance is 0x49bF4Ded143402B2fD89d8d284e477Dfdc9fa02B (0 locks, unused).
+  8453:  "0x048d1326B3b0531A5d043984F4e495285B07af4B", // Base Mainnet (growth, free)
   42161: "0xDC9bFb15C28486590Cbf58F3FEA9ADbEB9B0334c", // Arbitrum One
   10:    "0x1Ecf87D69c4a5c8D10ffb7D73e8ABB415043f866", // Optimism Mainnet
 };
