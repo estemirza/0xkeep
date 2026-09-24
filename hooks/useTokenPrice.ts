@@ -7,10 +7,8 @@ const CHAIN_MAP: Record<number, string> = {
   8453:    "base",
   42161:   "arbitrum",
   10:      "optimism",
-  // Testnets — tokens won't have real prices, returns 0 gracefully
-  84532:   "base",
-  421614:  "arbitrum",
-  11155420:"optimism",
+  // Testnets deliberately omitted: a testnet token address looked up on
+  // mainnet could match a real token and show a fake USD value.
 };
 
 export function useTokenPrice(

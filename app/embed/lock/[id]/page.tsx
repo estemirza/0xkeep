@@ -26,7 +26,7 @@ export default function LockEmbed() {
   if (!id) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-zinc-600" /></div>;
   
   let rawId = BigInt(0);
-  let targetChainId = 84532;
+  let targetChainId = 8453;
   
   try {
     const decodedId = decodeURIComponent(id as string);
@@ -62,7 +62,7 @@ export default function LockEmbed() {
   if (isLoading || !lock) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-zinc-600" /></div>;
 
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
-  const decimals = Number(lock[3] || 18);
+  const decimals = Number(lock[3] ?? 18);
   const amount = Number(formatUnits(lock[1], decimals)).toLocaleString();
   const unlockDate = new Date(Number(lock[5]) * 1000);
   const isUnlocked = Date.now() > unlockDate.getTime();

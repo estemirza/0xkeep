@@ -39,7 +39,7 @@ export default function VestingCertificatePage() {
   const { switchChain } = useSwitchChain();
 
   let rawId = BigInt(0);
-  let targetChainId = 84532;
+  let targetChainId = 8453;
   let parseError = false;
   try {
     const parsed = parseId(id as string);
@@ -120,7 +120,7 @@ export default function VestingCertificatePage() {
 
   // ── DATA ─────────────────────────────────────────────
   const tokenSymbol  = tokenData?.[0]?.result?.toString() || "ERC20";
-  const decimals     = Number(vest[3] || 18);
+  const decimals     = Number(vest[3] ?? 18);
   const totalRaw     = vest[1];   // uint96 — raw BigInt
   const claimedRaw   = vest[4];   // uint96 — raw BigInt
   const startTime    = Number(vest[5]);

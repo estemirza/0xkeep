@@ -27,7 +27,7 @@ export default function VestingEmbed() {
   if (!id) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-zinc-600" /></div>;
 
   let rawId = BigInt(0);
-  let targetChainId = 84532;
+  let targetChainId = 8453;
   
   try {
     // FIX 2: Safely decode the URL in case the browser encoded it
@@ -65,7 +65,7 @@ export default function VestingEmbed() {
   if (isLoading || !vest) return <div className="flex h-full items-center justify-center bg-[#030305]"><Loader2 className="animate-spin text-zinc-600" /></div>;
 
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
-  const decimals = Number(vest[3] || 18);
+  const decimals = Number(vest[3] ?? 18);
   const totalAmount = Number(formatUnits(vest[1], decimals));
   const claimedAmount = Number(formatUnits(vest[4], decimals));
   const startTime = Number(vest[5]);

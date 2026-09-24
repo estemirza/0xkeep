@@ -178,7 +178,8 @@ export default function CreatePage() {
     setActionType(null);
   }, [isTxSuccess, receipt, actionType, writeHash, chain?.id, refetchAllowance]);
 
-  const finalDecimals    = decimals || 18;
+  // `??` not `||`: a token with 0 decimals must stay 0, not fall back to 18.
+  const finalDecimals    = decimals ?? 18;
   const amountInWei      = amount ? parseUnits(amount, finalDecimals) : BigInt(0);
   const currentAllowance = allowance || BigInt(0);
   const needsApproval    = amountInWei > BigInt(0) && amountInWei > currentAllowance;
@@ -413,7 +414,7 @@ export default function CreatePage() {
                 { id: 84532,   name: "BASE SEPOLIA",  color: "bg-blue-600"  },
                 { id: 421614,  name: "ARB SEPOLIA",   color: "bg-blue-300"  },
                 { id: 11155420,name: "OP SEPOLIA",    color: "bg-red-400"   },
-              ].map(net => (
+              ].filter(net => net.id in CONTRACT_ADDRESSES).map(net => (
                 <button
                   key={net.id}
                   onClick={() => handleNetworkSwitch(net.id)}

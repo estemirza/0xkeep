@@ -32,7 +32,7 @@ export default function LockCertificatePage() {
   const { addWithdrawn } = useArchived();
 
   let rawId = BigInt(0);
-  let targetChainId = 84532;
+  let targetChainId = 8453;
   let parseError = false;
   try {
     const parsed = parseId(id as string);
@@ -121,7 +121,7 @@ export default function LockCertificatePage() {
 
   // ── DATA ─────────────────────────────────────────────
   const tokenSymbol = tokenData?.[0]?.result?.toString() || "ERC20";
-  const decimals    = Number(lock[3] || 18);
+  const decimals    = Number(lock[3] ?? 18);
   const amount      = Number(formatUnits(lock[1], decimals)).toLocaleString(undefined, { maximumFractionDigits: 2 });
   const unlockDate  = new Date(Number(lock[5]) * 1000);
 
