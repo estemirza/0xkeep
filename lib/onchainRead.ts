@@ -13,7 +13,7 @@ const RPC: Record<number, { chain: typeof base | typeof arbitrum | typeof optimi
 };
 
 const clients: Record<number, PublicClient> = {};
-function client(chainId: number): PublicClient {
+export function client(chainId: number): PublicClient {
   if (!clients[chainId]) {
     const cfg = RPC[chainId];
     clients[chainId] = createPublicClient({ chain: cfg.chain, transport: http(cfg.url) }) as PublicClient;
