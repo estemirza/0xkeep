@@ -6,6 +6,7 @@ import { useAccount, useReadContract, useReadContracts, useWriteContract, useWai
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { parseId, getExplorerAddressLink, getExplorerTokenLink, CHAIN_NAMES, formatTokenAmount } from "@/lib/formatter";
 import { erc20Abi, formatUnits, isAddressEqual } from "viem";
+import { useNow } from "@/hooks/useNow";
 import { Loader2, CheckCircle2, Copy, Twitter, Code, AlertTriangle, Lock, Info, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { isAddress } from "viem";
@@ -68,6 +69,7 @@ export default function VestingCertificatePage() {
   });
 
   const tokenAddress = vest ? vest[0] : undefined;
+  const nowMs = useNow(1000); // re-check locked/unlocked + vesting progress as time passes
   const { data: tokenData } = useReadContracts({
     contracts: [{ address: tokenAddress, abi: erc20Abi, functionName: 'symbol', chainId: targetChainId }],
     query: { enabled: !!tokenAddress },
@@ -140,7 +142,7 @@ export default function VestingCertificatePage() {
   const totalAmount   = Number(formatUnits(totalRaw, decimals));
   const claimedAmount = Number(formatUnits(claimedRaw, decimals));
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = Math.floor(nowMs / 1000);
   const cliffEnd = startTime + cliffDuration;
   const vestEnd  = cliffEnd + duration;    // FIX V7: end = cliff end + duration
 

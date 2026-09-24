@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACT_ABI, CONTRACT_ADDRESSES } from "@/lib/contract";
 import { formatUnits, erc20Abi } from "viem";
+import { useNow } from "@/hooks/useNow";
 import { Loader2, Pencil, Check, X, Archive } from "lucide-react";
 import Link from "next/link";
 import { formatLockId, formatVestingId, CHAIN_NAMES, CHAIN_COLORS, formatTokenAmount } from "@/lib/formatter";
@@ -95,6 +96,7 @@ export function LockRow({ lockId, chainId, index, prefetchedData, isWithdrawnLoc
   const activeContract              = getContractAddress(chainId);
   const { labels, setLabel }        = useLabels();
   const { archived, toggleArchive } = useArchived();
+  const nowMs = useNow(10000); // re-check status as time passes
 
   const { data: fetchedLock, isLoading } = useReadContract({
     address: activeContract,
@@ -136,7 +138,7 @@ export function LockRow({ lockId, chainId, index, prefetchedData, isWithdrawnLoc
     : null;
 
   const unlockDate = new Date(unlockTime * 1000);
-  const isUnlocked = Date.now() > unlockTime * 1000;
+  const isUnlocked = nowMs > unlockTime * 1000;
 
   const fancyId    = formatLockId(lockId, chainId);
   const userLabel  = labels[fancyId] || "";
@@ -219,6 +221,7 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
   const activeContract              = getContractAddress(chainId);
   const { labels, setLabel }        = useLabels();
   const { archived, toggleArchive } = useArchived();
+  const nowMs = useNow(10000); // re-check status as time passes
 
   const { data: fetchedVest, isLoading } = useReadContract({
     address: activeContract,
@@ -261,7 +264,7 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
         .toLocaleString(undefined, { style: 'currency', currency: 'USD' })
     : null;
 
-  const now      = Math.floor(Date.now() / 1000);
+  const now      = Math.floor(nowMs / 1000);
   const cliffEnd = startTime + cliffDuration;
   const vestEnd  = new Date((cliffEnd + duration) * 1000);
   const inCliff  = now < cliffEnd && !isFullyClaimed;
