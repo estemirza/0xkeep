@@ -78,6 +78,9 @@ export default function CreatePage() {
 
   const lockFee    = lockFeeData    ?? parseEther("0.03");
   const vestingFee = vestingFeeData ?? parseEther("0.02");
+  // Don't let a lock/vesting go out until the real fee has been read from the contract.
+  const feeReady = activeTab === 'lock' ? lockFeeData !== undefined : vestingFeeData !== undefined;
+
   // `!== undefined`, not a truthy check: a 0n fee (free Base instance) is falsy
   // and would otherwise fall back to showing "0.03".
   const feeAmount  = activeTab === 'lock'
@@ -201,7 +204,7 @@ export default function CreatePage() {
   };
 
   const handleLock = () => {
-    if (!isInputValid || !activeContract) return;
+    if (!isInputValid || !activeContract || !feeReady) return;
     setActionType(activeTab === 'lock' ? 'lock' : 'vesting');
 
     if (activeTab === 'lock') {
@@ -560,7 +563,7 @@ export default function CreatePage() {
 
               <button
                 onClick={handleLock}
-                disabled={needsApproval || !isInputValid || isBusy}
+                disabled={needsApproval || !isInputValid || isBusy || !feeReady}
                 className={`w-full flex items-center justify-center gap-2 ${!needsApproval && isInputValid ? 'btn-primary py-4 text-sm' : 'bg-[#1A1A24] text-[#555566] font-mono text-sm py-4 rounded-xl cursor-not-allowed transition-all border border-transparent'}`}
               >
                 {actionType === 'lock' && isBusy ? (
