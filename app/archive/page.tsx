@@ -222,11 +222,11 @@ export default function ArchiveDashboard() {
         </div>
         <div className="flex items-center gap-8 mt-4 md:mt-0">
           <div className="text-right">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-[#8B8B9E] block mb-1">Archived Locks</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 block mb-1">Archived Locks</span>
             <span className="text-3xl font-chakra font-bold text-zinc-400">{archivedLocksCount}</span>
           </div>
           <div className="text-right">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-[#8B8B9E] block mb-1">Archived Vestings</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 block mb-1">Archived Vestings</span>
             <span className="text-3xl font-chakra font-bold text-zinc-400">{archivedVestingsCount}</span>
           </div>
         </div>
@@ -234,16 +234,16 @@ export default function ArchiveDashboard() {
 
       {/* TOOLBAR */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 shrink-0">
-        <div className="flex gap-2 bg-[#13131A] p-1.5 rounded-xl border border-white/5">
+        <div className="flex gap-2 bg-white/[0.03] p-1.5 rounded-xl border border-white/5">
           <button
             onClick={() => setActiveTab('locks')}
-            className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'locks' ? 'bg-zinc-700 text-white font-bold' : 'text-[#8B8B9E] hover:text-white'}`}
+            className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'locks' ? 'bg-zinc-700 text-white font-bold' : 'text-zinc-400 hover:text-white'}`}
           >
             Liquidity Locks
           </button>
           <button
             onClick={() => setActiveTab('vesting')}
-            className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'vesting' ? 'bg-zinc-700 text-white font-bold' : 'text-[#8B8B9E] hover:text-white'}`}
+            className={`px-6 py-2 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all ${activeTab === 'vesting' ? 'bg-zinc-700 text-white font-bold' : 'text-zinc-400 hover:text-white'}`}
           >
             Vesting Schedules
           </button>
@@ -253,7 +253,7 @@ export default function ArchiveDashboard() {
           <div className="relative min-w-[200px]">
             <input
               type="text" placeholder="Search..."
-              className="w-full bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-3 py-2.5 text-[11px] text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
+              className="w-full bg-white/[0.03] border border-white/5 rounded-lg pl-9 pr-3 py-2.5 text-[11px] text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -263,7 +263,7 @@ export default function ArchiveDashboard() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as any)}
-              className="appearance-none bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-[#8B8B9E] font-mono focus:outline-none cursor-pointer hover:text-white transition-colors"
+              className="appearance-none bg-white/[0.03] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-zinc-400 font-mono focus:outline-none cursor-pointer hover:text-white transition-colors"
             >
               <option value="all">All Items</option>
               <option value="labeled">Labeled Only</option>
@@ -276,7 +276,7 @@ export default function ArchiveDashboard() {
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as any)}
-              className="appearance-none bg-[#13131A] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-[#8B8B9E] font-mono focus:outline-none cursor-pointer hover:text-white transition-colors"
+              className="appearance-none bg-white/[0.03] border border-white/5 rounded-lg pl-9 pr-8 py-2.5 text-[11px] text-zinc-400 font-mono focus:outline-none cursor-pointer hover:text-white transition-colors"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -290,19 +290,19 @@ export default function ArchiveDashboard() {
       </div>
 
       {/* TABLE */}
-      <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+      <div className="bg-white/[0.03] border border-white/[0.08] vtable rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
         <div className="overflow-auto flex-1 relative">
-          <div className="min-w-[1000px]">
-            <div className="grid grid-cols-7 px-5 py-4 border-b border-[#1C1C26] text-[10px] font-mono text-[#555566] uppercase tracking-widest bg-[#0F0F14] sticky top-0 z-10">
+          <div className="vtable-inner min-w-[1000px]">
+            <div className="vhead grid grid-cols-7 px-5 py-4 border-b border-white/[0.08] text-[10px] font-mono text-zinc-500 uppercase tracking-widest bg-white/[0.02] sticky top-0 z-10">
               <div>No.</div><div>ID / Label</div><div>Network</div><div>Token</div><div>Amount</div><div>Status</div><div>Action</div>
             </div>
 
             {!isConnected ? (
-              <div className="flex flex-col items-center justify-center h-[300px] text-[#555566] font-mono uppercase tracking-widest text-xs">
+              <div className="flex flex-col items-center justify-center h-[300px] text-zinc-500 font-mono uppercase tracking-widest text-xs">
                 <p>Connect wallet to view vaults</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#1C1C26]">
+              <div className="divide-y divide-white/[0.06]">
                 {idsLoading && (
                   <div className="p-12 flex justify-center text-zinc-500">
                     <Loader2 className="animate-spin" />
@@ -335,7 +335,7 @@ export default function ArchiveDashboard() {
                 ))}
 
                 {!idsLoading && processedItems.length === 0 && (
-                  <div className="p-16 text-center text-[#555566] font-mono uppercase tracking-widest text-xs">
+                  <div className="p-16 text-center text-zinc-500 font-mono uppercase tracking-widest text-xs">
                     {searchQuery ? "No matches found." : "No archived vaults found."}
                   </div>
                 )}
@@ -345,13 +345,13 @@ export default function ArchiveDashboard() {
         </div>
 
         {isConnected && processedItems.length > 0 && (
-          <div className="px-6 py-4 bg-[#0F0F14] border-t border-[#1C1C26] flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-20">
+          <div className="px-6 py-4 bg-white/[0.02] border-t border-white/[0.08] flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-20">
             <div className="flex items-center gap-3">
-              <span className="text-[#555566] font-mono text-[10px] uppercase tracking-widest">Rows:</span>
+              <span className="text-zinc-500 font-mono text-[10px] uppercase tracking-widest">Rows:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="bg-transparent border border-white/10 text-[#8B8B9E] font-mono text-[10px] rounded px-2 py-1 focus:outline-none cursor-pointer"
+                className="bg-transparent border border-white/10 text-zinc-400 font-mono text-[10px] rounded px-2 py-1 focus:outline-none cursor-pointer"
               >
                 <option value={10}>10</option>
                 <option value={30}>30</option>
@@ -360,14 +360,14 @@ export default function ArchiveDashboard() {
               </select>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-[#555566] font-mono text-[10px] uppercase tracking-widest">
+              <span className="text-zinc-500 font-mono text-[10px] uppercase tracking-widest">
                 Page {currentPage} of {totalPages}
               </span>
               <div className="flex gap-2">
-                <button onClick={goToPrev} disabled={currentPage === 1} className="text-[#8B8B9E] hover:text-white disabled:opacity-30 transition-colors">
+                <button onClick={goToPrev} disabled={currentPage === 1} className="text-zinc-400 hover:text-white disabled:opacity-30 transition-colors">
                   <ChevronLeft size={14} />
                 </button>
-                <button onClick={goToNext} disabled={currentPage === totalPages} className="text-[#8B8B9E] hover:text-white disabled:opacity-30 transition-colors">
+                <button onClick={goToNext} disabled={currentPage === totalPages} className="text-zinc-400 hover:text-white disabled:opacity-30 transition-colors">
                   <ChevronRight size={14} />
                 </button>
               </div>

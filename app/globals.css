@@ -2,57 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ───────── 0xKeep v2 · Obsidian Glass ───────── */
 :root {
-  --background: #0B0B0F; /* Darker, flatter background from your mockup */
+  --background: #030305;
   --foreground: #ffffff;
-  --panel: #13131A; /* Slightly lighter for cards */
-  --border: rgba(255, 255, 255, 0.05);
+  --panel: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hi: rgba(255, 255, 255, 0.16);
+  --aurora: linear-gradient(90deg, #7C3AED, #2563EB);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
 }
 
+html { color-scheme: dark; }
 body {
   background-color: var(--background);
   color: var(--foreground);
 }
 
-/* New Card Style (Flat, minimal border) */
+/* Ambient background (fixed, own GPU layer so scrolling never repaints it) */
+.app-ambient {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  transform: translateZ(0); contain: strict;
+  background:
+    radial-gradient(40% 35% at 78% 8%, rgba(124, 58, 237, .16), transparent 70%),
+    radial-gradient(35% 30% at 20% 100%, rgba(37, 99, 235, .10), transparent 70%);
+}
+.app-ambient::after {
+  content: ""; position: absolute; inset: 0; opacity: .5;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 60% at 60% 20%, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 60% 20%, #000 30%, transparent 80%);
+}
+
+/* Cards */
 .glass-card {
   background-color: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
 }
+.rounded-2xl.border { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04); }
 
-/* Primary Action Button (The Purple/Blue Gradient) */
+/* Buttons */
 .btn-primary {
-  @apply bg-gradient-to-r from-indigo-500 via-purple-500 to-purple-600 text-white font-mono uppercase tracking-widest text-xs py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply relative isolate text-white font-mono uppercase tracking-widest text-xs py-3 px-6 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed;
+  background: linear-gradient(#0c0a18, #0c0a18) padding-box, var(--aurora) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 8px 30px -8px rgba(124, 58, 237, .55);
 }
+.btn-primary::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+  background: var(--aurora); opacity: .22; transition: opacity .3s;
+}
+.btn-primary:not(:disabled):hover { box-shadow: 0 0 0 6px rgba(124, 58, 237, .12), 0 12px 40px -6px rgba(124, 58, 237, .75); }
+.btn-primary:not(:disabled):hover::before { opacity: .38; }
+.btn-primary:not(:disabled):active { transform: scale(.98); }
 
-/* Secondary Action Button (Dark) */
 .btn-secondary {
-  @apply bg-[#1A1A24] text-white font-mono uppercase tracking-widest text-xs py-3 px-6 rounded-lg border border-white/5 transition-all duration-300 hover:bg-[#22222F] disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-white/[0.05] text-white font-mono uppercase tracking-widest text-xs py-3 px-6 rounded-xl border border-white/[0.08] transition-all duration-300 hover:bg-white/[0.08] hover:border-white/[0.16] disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
-/* Ghost Button */
 .btn-ghost {
-  @apply bg-transparent text-zinc-400 font-mono uppercase tracking-widest text-xs border border-white/10 hover:text-white hover:border-white/20 transition-colors;
+  @apply bg-transparent text-zinc-400 font-mono uppercase tracking-widest text-xs border border-white/10 hover:text-white hover:border-white/20 hover:bg-white/[0.04] transition-colors;
 }
 
-/* Sidebar Active Link Effect */
+/* Form fields: soft violet focus ring */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  transition: border-color .2s, box-shadow .2s;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus {
+  border-color: rgba(167, 139, 250, .55) !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .16);
+}
+select option { background: #111118; color: #fff; }
+
+/* Sidebar active link */
 .sidebar-active {
-  @apply border-l-2 border-purple-500 bg-gradient-to-r from-purple-500/10 to-transparent text-white;
+  @apply text-white;
+  background: linear-gradient(90deg, rgba(124, 58, 237, .24), rgba(37, 99, 235, .08));
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, .22);
 }
 
-/* Custom Scrollbar for Omni-view Table */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Page enter transition (see app/template.tsx) */
+.page-enter { animation: page-in .45s var(--ease-out) both; }
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Vault tables: rows become cards below 1024px */
+@media (max-width: 1023px) {
+  .vtable .vtable-inner { min-width: 0 !important; }
+  .vtable .vhead { display: none; }
+  .vtable .vrow {
+    min-width: 0 !important;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "lab st" "tok amt" "net act";
+    gap: 12px 10px;
+    margin: 10px;
+    padding: 16px;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .02);
+  }
+  .vtable .vrow > :nth-child(1) { display: none; }
+  .vtable .vrow > :nth-child(2) { grid-area: lab; }
+  .vtable .vrow > :nth-child(3) { grid-area: net; }
+  .vtable .vrow > :nth-child(4) { grid-area: tok; }
+  .vtable .vrow > :nth-child(5) { grid-area: amt; align-items: flex-end; text-align: right; }
+  .vtable .vrow > :nth-child(6) { grid-area: st; justify-self: end; }
+  .vtable .vrow > :nth-child(6) > div { align-items: flex-end; }
+  .vtable .vrow > :nth-child(7) { grid-area: act; justify-self: end; }
+  .vtable .divide-y > * { border-top-width: 0; border-bottom-width: 0; }
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter { animation: none; }
 }
-::-webkit-scrollbar-thumb {
-  background: #2A2A35;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3F3F50;
-}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .18); }
