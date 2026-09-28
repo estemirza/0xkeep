@@ -84,7 +84,7 @@ export default function TokenomicsAuditPage() {
         <h1 className="text-4xl md:text-5xl font-chakra font-bold text-white mb-2 tracking-tight">
           Tokenomics <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">Audit</span>
         </h1>
-        <p className="text-[#8B8B9E] font-mono text-xs uppercase tracking-widest">
+        <p className="text-zinc-400 font-mono text-xs uppercase tracking-widest">
           Public Risk Assessor for Token Distributions
         </p>
       </div>
@@ -93,48 +93,48 @@ export default function TokenomicsAuditPage() {
           
           {/* LEFT: THE FORM */}
           <div className="w-full lg:w-[400px] shrink-0">
-              <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6 md:p-8">
+              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 md:p-8">
                   <div className="flex items-center gap-3 mb-6">
                       <div className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-xs"><PieChart size={20} /></div>
                       <h2 className="text-white font-medium text-lg font-sans">Allocation Setup</h2>
                   </div>
 
-                  <p className="text-xs text-[#555566] font-sans mb-6">Enter your token distribution percentages. The total must equal exactly 100%.</p>
+                  <p className="text-xs text-zinc-500 font-sans mb-6">Enter your token distribution percentages. The total must equal exactly 100%.</p>
 
                   <div className="space-y-4 mb-6">
-                      <div className="flex items-center justify-between bg-[#0B0B0F] border border-[#1C1C26] rounded-xl p-3">
-                          <span className="text-xs font-mono uppercase tracking-widest text-[#8B8B9E]">Initial Liquidity (LP)</span>
+                      <div className="flex items-center justify-between bg-black/30 border border-white/[0.08] rounded-xl p-3">
+                          <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Initial Liquidity (LP)</span>
                           <div className="flex items-center gap-2">
                               <input type="number" className="w-16 bg-transparent text-right text-white font-mono focus:outline-none" value={allocations.liquidity} onChange={(e) => handleChange('liquidity', e.target.value)} />
-                              <span className="text-[#555566] font-mono">%</span>
+                              <span className="text-zinc-500 font-mono">%</span>
                           </div>
                       </div>
-                      <div className="flex items-center justify-between bg-[#0B0B0F] border border-[#1C1C26] rounded-xl p-3">
-                          <span className="text-xs font-mono uppercase tracking-widest text-[#8B8B9E]">Team & Founders</span>
+                      <div className="flex items-center justify-between bg-black/30 border border-white/[0.08] rounded-xl p-3">
+                          <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Team & Founders</span>
                           <div className="flex items-center gap-2">
                               <input type="number" className="w-16 bg-transparent text-right text-white font-mono focus:outline-none" value={allocations.team} onChange={(e) => handleChange('team', e.target.value)} />
-                              <span className="text-[#555566] font-mono">%</span>
+                              <span className="text-zinc-500 font-mono">%</span>
                           </div>
                       </div>
-                      <div className="flex items-center justify-between bg-[#0B0B0F] border border-[#1C1C26] rounded-xl p-3">
-                          <span className="text-xs font-mono uppercase tracking-widest text-[#8B8B9E]">Private Investors / VC</span>
+                      <div className="flex items-center justify-between bg-black/30 border border-white/[0.08] rounded-xl p-3">
+                          <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Private Investors / VC</span>
                           <div className="flex items-center gap-2">
                               <input type="number" className="w-16 bg-transparent text-right text-white font-mono focus:outline-none" value={allocations.investors} onChange={(e) => handleChange('investors', e.target.value)} />
-                              <span className="text-[#555566] font-mono">%</span>
+                              <span className="text-zinc-500 font-mono">%</span>
                           </div>
                       </div>
-                      <div className="flex items-center justify-between bg-[#0B0B0F] border border-[#1C1C26] rounded-xl p-3">
-                          <span className="text-xs font-mono uppercase tracking-widest text-[#8B8B9E]">Community / Airdrop</span>
+                      <div className="flex items-center justify-between bg-black/30 border border-white/[0.08] rounded-xl p-3">
+                          <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Community / Airdrop</span>
                           <div className="flex items-center gap-2">
                               <input type="number" className="w-16 bg-transparent text-right text-white font-mono focus:outline-none" value={allocations.community} onChange={(e) => handleChange('community', e.target.value)} />
-                              <span className="text-[#555566] font-mono">%</span>
+                              <span className="text-zinc-500 font-mono">%</span>
                           </div>
                       </div>
-                      <div className="flex items-center justify-between bg-[#0B0B0F] border border-[#1C1C26] rounded-xl p-3">
-                          <span className="text-xs font-mono uppercase tracking-widest text-[#8B8B9E]">Treasury / Ecosystem</span>
+                      <div className="flex items-center justify-between bg-black/30 border border-white/[0.08] rounded-xl p-3">
+                          <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Treasury / Ecosystem</span>
                           <div className="flex items-center gap-2">
                               <input type="number" className="w-16 bg-transparent text-right text-white font-mono focus:outline-none" value={allocations.treasury} onChange={(e) => handleChange('treasury', e.target.value)} />
-                              <span className="text-[#555566] font-mono">%</span>
+                              <span className="text-zinc-500 font-mono">%</span>
                           </div>
                       </div>
                   </div>
@@ -147,7 +147,7 @@ export default function TokenomicsAuditPage() {
                   <button 
                       onClick={runAudit} 
                       disabled={isInvalid}
-                      className={`w-full py-4 rounded-xl font-mono text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${isInvalid ? 'bg-[#1A1A24] text-[#555566] cursor-not-allowed border border-white/5' : 'btn-primary'}`}
+                      className={`w-full py-4 rounded-xl font-mono text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${isInvalid ? 'bg-white/[0.05] text-zinc-500 cursor-not-allowed border border-white/5' : 'btn-primary'}`}
                   >
                       <PieChart size={16} /> Run Automated Audit
                   </button>
@@ -157,14 +157,14 @@ export default function TokenomicsAuditPage() {
           {/* RIGHT: THE REPORT & CTA */}
           <div className="flex-1 w-full">
               {!report ? (
-                  <div className="h-full flex flex-col items-center justify-center bg-[#13131A]/30 border border-[#1C1C26] border-dashed rounded-2xl p-12 text-center opacity-50">
-                      <ShieldCheck size={48} className="text-[#555566] mb-4" />
+                  <div className="h-full flex flex-col items-center justify-center bg-white/[0.015] border border-white/[0.08] border-dashed rounded-2xl p-12 text-center opacity-50">
+                      <ShieldCheck size={48} className="text-zinc-500 mb-4" />
                       <p className="text-white font-mono uppercase tracking-widest text-sm mb-2">Awaiting Data</p>
-                      <p className="text-[#8B8B9E] font-sans text-xs max-w-sm">Enter your allocations and run the audit to receive an objective risk report.</p>
+                      <p className="text-zinc-400 font-sans text-xs max-w-sm">Enter your allocations and run the audit to receive an objective risk report.</p>
                   </div>
               ) : (
                   <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col h-full">
-                      <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6 md:p-8 flex-1 mb-6 relative overflow-hidden">
+                      <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 md:p-8 flex-1 mb-6 relative overflow-hidden">
                           {/* Giant Watermark Grade */}
                           <div className={`absolute -bottom-10 -right-10 text-[200px] font-chakra font-bold opacity-5 ${report.color} pointer-events-none select-none leading-none`}>
                               {report.grade}
@@ -173,11 +173,11 @@ export default function TokenomicsAuditPage() {
                           <div className="flex justify-between items-start mb-8 border-b border-white/5 pb-6 relative z-10">
                               <div>
                                   <h3 className="text-white font-sans text-2xl font-bold mb-1">Audit Results</h3>
-                                  <span className="text-[#8B8B9E] font-mono text-[10px] uppercase tracking-widest">Score based on decentralization & trust</span>
+                                  <span className="text-zinc-400 font-mono text-[10px] uppercase tracking-widest">Score based on decentralization & trust</span>
                               </div>
                               <div className="text-right">
                                   <span className={`text-4xl font-chakra font-bold ${report.color}`}>{report.score}/100</span>
-                                  <span className="block text-[#555566] font-mono text-[10px] uppercase tracking-widest mt-1">Grade: {report.grade}</span>
+                                  <span className="block text-zinc-500 font-mono text-[10px] uppercase tracking-widest mt-1">Grade: {report.grade}</span>
                               </div>
                           </div>
 

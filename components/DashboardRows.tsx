@@ -28,7 +28,7 @@ const NetworkBadge = ({ chainId }: { chainId: number }) => {
   return (
     <div className="flex items-center gap-2">
       <div className={`w-1.5 h-1.5 rounded-full ${color}`}></div>
-      <span className="text-[#8B8B9E] font-mono text-[10px] uppercase tracking-widest hidden sm:inline">{name}</span>
+      <span className="text-zinc-400 font-mono text-[10px] uppercase tracking-widest hidden sm:inline">{name}</span>
     </div>
   );
 };
@@ -118,7 +118,7 @@ export function LockRow({ lockId, chainId, index, prefetchedData, isWithdrawnLoc
 
   if ((isLoading && !prefetchedData) || !rawLock) {
     return (
-      <div className="grid grid-cols-7 p-5 border-b border-[#1C1C26] animate-pulse">
+      <div className="grid grid-cols-7 p-5 border-b border-white/[0.08] animate-pulse">
         <div className="col-span-7 h-4 bg-white/5 rounded"></div>
       </div>
     );
@@ -147,7 +147,7 @@ export function LockRow({ lockId, chainId, index, prefetchedData, isWithdrawnLoc
   let statusDisplay;
   if (isWithdrawn) {
     statusDisplay = (
-      <span className="text-[#555566] text-[10px] uppercase tracking-widest line-through">WITHDRAWN</span>
+      <span className="text-zinc-500 text-[10px] uppercase tracking-widest line-through">WITHDRAWN</span>
     );
   } else if (isUnlocked) {
     statusDisplay = (
@@ -166,7 +166,7 @@ export function LockRow({ lockId, chainId, index, prefetchedData, isWithdrawnLoc
   return (
     <Link
       href={`/lock/${fancyId}`}
-      className="grid grid-cols-7 min-w-[900px] p-5 border-b border-[#1C1C26] text-sm font-mono hover:bg-white/[0.02] transition-colors cursor-pointer group items-center"
+      className="vrow grid grid-cols-7 min-w-[900px] p-5 border-b border-white/[0.08] text-sm font-mono hover:bg-white/[0.02] transition-colors cursor-pointer group items-center"
     >
       <div className="text-zinc-500 text-xs">{index}.</div>
       <div className="flex flex-col">
@@ -243,7 +243,7 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
 
   if ((isLoading && !prefetchedData) || !rawVest) {
     return (
-      <div className="grid grid-cols-7 p-5 border-b border-[#1C1C26] animate-pulse">
+      <div className="grid grid-cols-7 p-5 border-b border-white/[0.08] animate-pulse">
         <div className="col-span-7 h-4 bg-white/5 rounded"></div>
       </div>
     );
@@ -276,7 +276,7 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
   let statusDisplay;
   if (isFullyClaimed) {
     statusDisplay = (
-      <span className="text-[#555566] text-[10px] uppercase tracking-widest line-through">COMPLETED</span>
+      <span className="text-zinc-500 text-[10px] uppercase tracking-widest line-through">COMPLETED</span>
     );
   } else if (inCliff) {
     statusDisplay = (
@@ -301,7 +301,7 @@ export function VestingRow({ vestingId, chainId, index, prefetchedData }: {
   return (
     <Link
       href={`/vesting/${fancyId}`}
-      className="grid grid-cols-7 min-w-[900px] p-5 border-b border-[#1C1C26] text-sm font-mono hover:bg-white/[0.02] transition-colors cursor-pointer group items-center"
+      className="vrow grid grid-cols-7 min-w-[900px] p-5 border-b border-white/[0.08] text-sm font-mono hover:bg-white/[0.02] transition-colors cursor-pointer group items-center"
     >
       <div className="text-zinc-500 text-xs">{index}.</div>
       <div className="flex flex-col">

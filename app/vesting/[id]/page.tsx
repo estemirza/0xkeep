@@ -101,10 +101,10 @@ export default function VestingCertificatePage() {
 
   if (!activeContract || parseError) {
     return (
-      <div className="min-h-screen bg-[#0B0B0F] flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 font-mono text-sm uppercase tracking-widest mb-2">Invalid Certificate ID</p>
-          <p className="text-[#555566] font-mono text-xs">This vesting ID does not exist or the chain is not supported.</p>
+          <p className="text-zinc-500 font-mono text-xs">This vesting ID does not exist or the chain is not supported.</p>
         </div>
       </div>
     );
@@ -112,8 +112,8 @@ export default function VestingCertificatePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0B0B0F] flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#555566]" />
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
+        <Loader2 className="animate-spin text-zinc-500" />
       </div>
     );
   }
@@ -121,10 +121,10 @@ export default function VestingCertificatePage() {
   // FIX V5: Error state instead of infinite spinner
   if (isError || !vest) {
     return (
-      <div className="min-h-screen bg-[#0B0B0F] flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 font-mono text-sm uppercase tracking-widest mb-2">Vesting Not Found</p>
-          <p className="text-[#555566] font-mono text-xs">This vesting ID does not exist on {CHAIN_NAMES[targetChainId] || "this network"}.</p>
+          <p className="text-zinc-500 font-mono text-xs">This vesting ID does not exist on {CHAIN_NAMES[targetChainId] || "this network"}.</p>
         </div>
       </div>
     );
@@ -224,19 +224,19 @@ export default function VestingCertificatePage() {
   // FIX V10: Three states — In Cliff / Active / Completed
   const statusLabel = isCompleted ? 'Completed' : inCliff ? 'In Cliff' : 'Active';
   const statusColor = isCompleted
-    ? 'text-[#555566]'
+    ? 'text-zinc-500'
     : inCliff
     ? 'text-amber-400'
     : 'text-white';
   const statusDot = isCompleted
-    ? 'bg-[#555566]'
+    ? 'bg-zinc-500'
     : inCliff
     ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
     : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]';
 
   // ── RENDER ────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-[#0B0B0F] pb-20" onClick={() => setOpenInfo(null)}>
+    <main className="min-h-screen bg-transparent pb-20" onClick={() => setOpenInfo(null)}>
       
       <div className="max-w-5xl mx-auto px-4 md:px-6 mt-12 flex flex-col items-center">
 
@@ -246,24 +246,24 @@ export default function VestingCertificatePage() {
             <a href={getExplorerAddressLink(targetChainId, activeContract)}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full border border-white/5 bg-[#13131A] hover:bg-[#1A1A24] transition-colors cursor-pointer group"
+            className="flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] transition-colors cursor-pointer group"
           >
             <div className="bg-purple-500 rounded-full p-0.5"><CheckCircle2 size={10} className="text-white" /></div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-[#8B8B9E] group-hover:text-white transition-colors">Verified by 0xKeep</span>
+            <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 group-hover:text-white transition-colors">Verified by 0xKeep</span>
           </a>
           <h1 className="text-3xl md:text-4xl font-chakra font-bold text-white uppercase tracking-tight mb-2">Vesting Certificate</h1>
-          <p className="text-[#555566] font-mono text-xs uppercase tracking-widest">Certificate ID: {id}</p>
+          <p className="text-zinc-500 font-mono text-xs uppercase tracking-widest">Certificate ID: {id}</p>
         </div>
 
         <div className="w-full flex flex-col lg:flex-row gap-6 mb-6">
 
           {/* LEFT COLUMN */}
-          <div className="flex-1 bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6 md:p-8 flex flex-col justify-between relative overflow-hidden">
+          <div className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 md:p-8 flex flex-col justify-between relative overflow-hidden">
 
             {/* Status + Amount */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566] block mb-2">Status</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 block mb-2">Status</span>
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${statusDot}`}></div>
                   <span className={`text-xl font-chakra font-bold uppercase tracking-wide ${statusColor}`}>{statusLabel}</span>
@@ -275,7 +275,7 @@ export default function VestingCertificatePage() {
                 )}
               </div>
               <div className="md:text-right">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566] block mb-2">Total Allocation</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 block mb-2">Total Allocation</span>
                 <div className="flex items-baseline gap-2 md:justify-end">
                   <p className="text-3xl md:text-4xl font-mono text-white break-all">
                     {formatTokenAmount(totalAmount)}
@@ -287,11 +287,11 @@ export default function VestingCertificatePage() {
 
             {/* Progress Bar */}
             <div className="mb-10">
-              <div className="relative h-2 bg-[#1C1C26] rounded-full overflow-hidden mb-3">
-                <div className="absolute top-0 left-0 h-full bg-[#2A2A3A]" style={{ width: `${percentTime}%` }} />
+              <div className="relative h-2 bg-white/[0.08] rounded-full overflow-hidden mb-3">
+                <div className="absolute top-0 left-0 h-full bg-white/[0.1]" style={{ width: `${percentTime}%` }} />
                 <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-600 to-indigo-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${percentClaimed}%` }} />
               </div>
-              <div className="flex justify-between text-[10px] font-mono text-[#555566] uppercase tracking-widest mb-6">
+              <div className="flex justify-between text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-6">
                 <span>Start: {formatDate(startTime)}</span>
                 {cliffDuration > 0 && <span className="text-amber-400/70">Cliff: {formatDate(cliffEnd)}</span>}
                 <span>End: {formatDate(vestEnd)}</span>
@@ -301,13 +301,13 @@ export default function VestingCertificatePage() {
                   <p className="text-2xl font-mono text-white">
                     {formatTokenAmount(claimedAmount)}
                   </p>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-[#555566] mt-1">Claimed So Far</p>
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mt-1">Claimed So Far</p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-mono text-white">
                     {formatTokenAmount(claimableNow)}
                   </p>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-[#555566] mt-1">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mt-1">
                     {inCliff ? "Available After Cliff" : "Available to Claim"}
                   </p>
                 </div>
@@ -316,8 +316,8 @@ export default function VestingCertificatePage() {
 
             {/* Metadata Links */}
             <div className="space-y-4 mb-8">
-              <div className="flex justify-between items-center border-b border-[#1C1C26] pb-4">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566]">Beneficiary</span>
+              <div className="flex justify-between items-center border-b border-white/[0.08] pb-4">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Beneficiary</span>
                 
                   <a href={getExplorerAddressLink(targetChainId, vest[2])}
                   target="_blank"
@@ -327,8 +327,8 @@ export default function VestingCertificatePage() {
                   {vest[2]}
                 </a>
               </div>
-              <div className="flex justify-between items-center border-b border-[#1C1C26] pb-4">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#555566]">Token Contract</span>
+              <div className="flex justify-between items-center border-b border-white/[0.08] pb-4">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Token Contract</span>
                 
                   <a href={getExplorerTokenLink(targetChainId, vest[0])}
                   target="_blank"
@@ -343,20 +343,20 @@ export default function VestingCertificatePage() {
             {/* Toolbar */}
             <div className="flex flex-wrap items-center justify-between pt-2">
               <div className="flex items-center gap-6">
-                <button onClick={() => copyToClipboard(window.location.href, setIsCopied)} className="flex items-center gap-2 text-[#8B8B9E] hover:text-white transition-colors">
+                <button onClick={() => copyToClipboard(window.location.href, setIsCopied)} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
                   {isCopied ? <CheckCircle2 size={14} className="text-green-400" /> : <Copy size={14} />}
                   <span className="font-mono text-[10px] uppercase tracking-widest">{isCopied ? "Copied" : "Copy Link"}</span>
                 </button>
-                <button onClick={handleShareTwitter} className="flex items-center gap-2 text-[#8B8B9E] hover:text-white transition-colors">
+                <button onClick={handleShareTwitter} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
                   <Twitter size={14} />
                   <span className="font-mono text-[10px] uppercase tracking-widest">Share on X</span>
                 </button>
-                <button onClick={handleEmbed} className="flex items-center gap-2 text-[#8B8B9E] hover:text-white transition-colors">
+                <button onClick={handleEmbed} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
                   {isEmbedCopied ? <CheckCircle2 size={14} className="text-green-400" /> : <Code size={14} />}
                   <span className="font-mono text-[10px] uppercase tracking-widest">{isEmbedCopied ? "Copied Code" : "Embed"}</span>
                 </button>
               </div>
-              <div className="flex items-center gap-2 bg-[#0B0B0F] px-3 py-1.5 rounded-full border border-[#1C1C26] mt-4 sm:mt-0">
+              <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-white/[0.08] mt-4 sm:mt-0">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.8)]"></div>
                 <span className="text-blue-400 font-mono text-[9px] uppercase tracking-wider">{CHAIN_NAMES[targetChainId] || "UNKNOWN"}</span>
               </div>
@@ -364,15 +364,15 @@ export default function VestingCertificatePage() {
           </div>
 
           {/* RIGHT COLUMN: OWNER CONTROLS */}
-          <div className="w-full lg:w-[380px] bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6 flex flex-col justify-between shrink-0 h-fit">
-            <h3 className="font-mono uppercase text-xs text-[#8B8B9E] tracking-widest mb-6 text-center">Owner Control</h3>
+          <div className="w-full lg:w-[380px] bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 flex flex-col justify-between shrink-0 h-fit">
+            <h3 className="font-mono uppercase text-xs text-zinc-400 tracking-widest mb-6 text-center">Owner Control</h3>
 
             <div className="relative flex-1 flex flex-col -mx-2 px-2">
               {(!isOwner || isCompleted) && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#13131A]/60 backdrop-blur-[2px] rounded-xl border border-white/5">
-                  <Lock size={24} className="text-[#555566] mb-3" />
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0c0c12]/75 backdrop-blur-[2px] rounded-xl border border-white/5">
+                  <Lock size={24} className="text-zinc-500 mb-3" />
                   <span className="font-mono text-xs uppercase tracking-widest text-zinc-300">Restricted</span>
-                  <span className="font-sans text-[10px] text-[#8B8B9E] mt-2 text-center px-4 leading-relaxed">
+                  <span className="font-sans text-[10px] text-zinc-400 mt-2 text-center px-4 leading-relaxed">
                     {isCompleted ? "This vesting schedule is fully completed." : "Only the connected owner wallet can access these controls."}
                   </span>
                 </div>
@@ -381,13 +381,13 @@ export default function VestingCertificatePage() {
               <div className={`space-y-6 flex-1 flex flex-col transition-all duration-300 ${(!isOwner || isCompleted) ? 'opacity-30 blur-[2px] pointer-events-none select-none' : ''}`}>
 
                 {/* Transfer */}
-                <div className="space-y-2 border border-[#1C1C26] p-4 rounded-xl bg-[#0B0B0F]/50">
+                <div className="space-y-2 border border-white/[0.08] p-4 rounded-xl bg-black/25">
                   <div className="flex justify-between items-center mb-4 relative">
                     <div className="flex items-center gap-2 text-[#E0A831]">
                       <AlertTriangle size={14} />
                       <span className="font-mono uppercase text-xs tracking-widest">Transfer Ownership</span>
                     </div>
-                    <Info size={14} className="text-[#555566] hover:text-white cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleInfo('transfer'); }} />
+                    <Info size={14} className="text-zinc-500 hover:text-white cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleInfo('transfer'); }} />
                     {openInfo === 'transfer' && (
                       <InfoPopup title="Transfer Ownership" description="Permanently hand over the remaining vesting schedule to another wallet. The new owner receives all future claims." className="top-6 right-0" onClose={() => setOpenInfo(null)} />
                     )}
@@ -395,34 +395,34 @@ export default function VestingCertificatePage() {
                   <input
                     type="text" placeholder="0x..." disabled={!isOwner || isCompleted}
                     value={transferAddress}
-                    className={`w-full bg-[#13131A] border border-[#1C1C26] rounded-lg p-3 text-white font-mono text-xs focus:outline-none disabled:opacity-50 mb-1 ${isInvalidTransfer ? 'border-red-500/50' : 'border-[#1C1C26] focus:border-blue-500'}`}
+                    className={`w-full bg-white/[0.03] border border-white/[0.08] rounded-lg p-3 text-white font-mono text-xs focus:outline-none disabled:opacity-50 mb-1 ${isInvalidTransfer ? 'border-red-500/50' : 'border-white/[0.08] focus:border-blue-500'}`}
                     onChange={(e) => setTransferAddress(e.target.value)}
                   />
                   {isInvalidTransfer && <p className="text-red-400 text-[9px] font-mono uppercase tracking-widest mb-3">Invalid Address</p>}
                   <button
                     onClick={handleTransfer}
                     disabled={!isOwner || isCompleted || isPending || !transferAddress || isInvalidTransfer}
-                    className="w-full py-2.5 mt-2 rounded-full border border-white/10 text-xs font-mono uppercase tracking-widest text-[#8B8B9E] hover:text-white hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-2.5 mt-2 rounded-full border border-white/10 text-xs font-mono uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isPending && activeAction === 'transfer' ? <Loader2 className="animate-spin mx-auto" size={14} /> : "Transfer"}
                   </button>
                 </div>
 
                 {/* Claim */}
-                <div className="mt-6 pt-6 border-t border-[#1C1C26]">
+                <div className="mt-6 pt-6 border-t border-white/[0.08]">
                   <div className="text-center mb-4">
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-[#555566] mb-1">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-1">
                       {inCliff ? "Unlocks After Cliff" : "Available to Claim"}
                     </p>
                     <p className="text-2xl font-mono text-white">
                       {formatTokenAmount(claimableNow)}
                     </p>
-                    <p className="text-[#555566] font-mono text-xs mt-1">{tokenSymbol}</p>
+                    <p className="text-zinc-500 font-mono text-xs mt-1">{tokenSymbol}</p>
                   </div>
                   <button
                     onClick={handleClaim}
                     disabled={!isOwner || claimableNow <= 0 || isPending || inCliff}
-                    className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-mono text-sm uppercase tracking-widest transition-all ${(!isOwner || claimableNow <= 0 || inCliff) ? 'bg-[#1A1A24] text-[#555566] cursor-not-allowed border border-white/5' : 'bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:brightness-110'}`}
+                    className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-mono text-sm uppercase tracking-widest transition-all ${(!isOwner || claimableNow <= 0 || inCliff) ? 'bg-white/[0.05] text-zinc-500 cursor-not-allowed border border-white/5' : 'bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:brightness-110'}`}
                   >
                     {isPending && activeAction === 'claim' ? <Loader2 className="animate-spin" size={16} /> : inCliff ? "In Cliff Period" : "Claim Tokens"}
                   </button>

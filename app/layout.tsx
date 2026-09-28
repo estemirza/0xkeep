@@ -22,16 +22,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${jetbrains.variable} ${chakra.variable} font-sans bg-[#0B0B0F] text-white selection:bg-purple-500/30 overflow-hidden`}>
+      <body className={`${inter.variable} ${jetbrains.variable} ${chakra.variable} font-sans bg-[#030305] text-white selection:bg-purple-500/30 overflow-hidden`}>
         <Providers>
-          <div className="flex h-screen w-full">
+          <div className="app-ambient" aria-hidden="true" />
+          <div className="relative z-10 flex h-screen w-full">
             {/* Desktop Sidebar */}
             <Sidebar />
             
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
               <Navbar />
-              <div className="flex-1 overflow-y-auto bg-[#0B0B0F]">
+              <div className="flex-1 overflow-y-auto bg-transparent">
                 {children}
               </div>
             </div>

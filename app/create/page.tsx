@@ -246,7 +246,7 @@ export default function CreatePage() {
   if (isSuccessScreen) {
     return (
       <main className="min-h-full px-6 md:px-12 py-20 max-w-7xl mx-auto flex flex-col items-center justify-center">
-        <div className="bg-[#13131A] border border-[#1C1C26] p-10 md:p-14 rounded-2xl flex flex-col items-center text-center max-w-md w-full shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+        <div className="bg-white/[0.03] border border-white/[0.08] p-10 md:p-14 rounded-2xl flex flex-col items-center text-center max-w-md w-full shadow-2xl animate-in fade-in slide-in-from-bottom-4">
 
           <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-6 border border-green-500/20 shadow-[0_0_20px_rgba(74,222,128,0.15)]">
             <CheckCircle2 className="text-green-400 w-10 h-10" />
@@ -257,12 +257,12 @@ export default function CreatePage() {
           </h2>
 
           {completedId && (
-            <p className="text-[#8B8B9E] font-mono text-xs uppercase tracking-widest mb-2">
+            <p className="text-zinc-400 font-mono text-xs uppercase tracking-widest mb-2">
               ID: {completedId}
             </p>
           )}
 
-          <p className="text-[#8B8B9E] font-mono text-xs uppercase tracking-widest mb-10 leading-relaxed">
+          <p className="text-zinc-400 font-mono text-xs uppercase tracking-widest mb-10 leading-relaxed">
             Your transaction has been confirmed on the blockchain.
           </p>
 
@@ -308,7 +308,7 @@ export default function CreatePage() {
               setAmount("");
               setCompletedId(null);
             }}
-            className="mt-8 text-[#555566] hover:text-white transition-colors font-mono text-[10px] uppercase tracking-widest"
+            className="mt-8 text-zinc-500 hover:text-white transition-colors font-mono text-[10px] uppercase tracking-widest"
           >
             Initialize Another Vault
           </button>
@@ -322,14 +322,14 @@ export default function CreatePage() {
   if (!isConnected) {
     return (
       <main className="min-h-full px-6 md:px-12 py-20 max-w-7xl mx-auto flex flex-col items-center justify-center">
-        <div className="bg-[#13131A] border border-[#1C1C26] p-10 rounded-2xl flex flex-col items-center text-center max-w-md w-full">
+        <div className="bg-white/[0.03] border border-white/[0.08] p-10 rounded-2xl flex flex-col items-center text-center max-w-md w-full">
           <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mb-6 border border-purple-500/20">
             <AlertTriangle className="text-purple-400 w-8 h-8" />
           </div>
           <h2 className="text-2xl font-chakra font-bold text-white mb-3 uppercase tracking-tight">
             Connect Wallet
           </h2>
-          <p className="text-[#8B8B9E] font-mono text-xs uppercase tracking-widest leading-relaxed">
+          <p className="text-zinc-400 font-mono text-xs uppercase tracking-widest leading-relaxed">
             Please connect your wallet to initialize a vault.
           </p>
         </div>
@@ -342,14 +342,14 @@ export default function CreatePage() {
   if (!isChainSupported) {
     return (
       <main className="min-h-full px-6 md:px-12 py-20 max-w-7xl mx-auto flex flex-col items-center justify-center">
-        <div className="bg-[#13131A] border border-[#1C1C26] p-10 rounded-2xl flex flex-col items-center text-center max-w-md w-full">
+        <div className="bg-white/[0.03] border border-white/[0.08] p-10 rounded-2xl flex flex-col items-center text-center max-w-md w-full">
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
             <AlertTriangle className="text-red-400 w-8 h-8" />
           </div>
           <h2 className="text-2xl font-chakra font-bold text-white mb-3 uppercase tracking-tight">
             Unsupported Network
           </h2>
-          <p className="text-[#8B8B9E] font-mono text-xs uppercase tracking-widest mb-8 leading-relaxed">
+          <p className="text-zinc-400 font-mono text-xs uppercase tracking-widest mb-8 leading-relaxed">
             Please switch to a supported network to continue.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
@@ -361,7 +361,7 @@ export default function CreatePage() {
               <button
                 key={net.id}
                 onClick={() => handleNetworkSwitch(net.id)}
-                className="px-4 py-2 rounded-lg border border-[#1C1C26] bg-[#1A1A24] text-[#8B8B9E] font-mono text-[10px] uppercase tracking-widest hover:text-white hover:border-white/20 transition-all"
+                className="px-4 py-2 rounded-lg border border-white/[0.08] bg-white/[0.05] text-zinc-400 font-mono text-[10px] uppercase tracking-widest hover:text-white hover:border-white/20 transition-all"
               >
                 {net.name}
               </button>
@@ -387,10 +387,10 @@ export default function CreatePage() {
         <div className="relative w-64">
           <button
             onClick={(e) => { e.stopPropagation(); setActiveTab('lock'); }}
-            className={`w-full py-3.5 px-6 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all flex items-center justify-between border ${activeTab === 'lock' ? 'bg-white text-black border-white font-bold shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'bg-[#13131A] text-[#8B8B9E] border-[#1C1C26] hover:bg-[#1A1A24]'}`}
+            className={`w-full py-3.5 px-6 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all flex items-center justify-between border ${activeTab === 'lock' ? 'bg-white text-black border-white font-bold shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'bg-white/[0.03] text-zinc-400 border-white/[0.08] hover:bg-white/[0.06]'}`}
           >
             Standard Lock
-            <Info size={14} className={activeTab === 'lock' ? 'text-zinc-500' : 'text-[#555566]'} onClick={(e) => { e.stopPropagation(); setOpenInfo(openInfo === 'lock' ? null : 'lock'); }} />
+            <Info size={14} className={activeTab === 'lock' ? 'text-zinc-500' : 'text-zinc-500'} onClick={(e) => { e.stopPropagation(); setOpenInfo(openInfo === 'lock' ? null : 'lock'); }} />
           </button>
           {openInfo === 'lock' && (
             <InfoPopup title="Standard Lock" description="Tokens are 100% locked until the specific date. Withdrawal is impossible before the unlock time." className="top-full left-0 mt-2" onClose={() => setOpenInfo(null)} />
@@ -399,10 +399,10 @@ export default function CreatePage() {
         <div className="relative w-64">
           <button
             onClick={(e) => { e.stopPropagation(); setActiveTab('vesting'); }}
-            className={`w-full py-3.5 px-6 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all flex items-center justify-between border ${activeTab === 'vesting' ? 'bg-white text-black border-white font-bold shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'bg-[#13131A] text-[#8B8B9E] border-[#1C1C26] hover:bg-[#1A1A24]'}`}
+            className={`w-full py-3.5 px-6 rounded-lg font-mono text-[11px] uppercase tracking-widest transition-all flex items-center justify-between border ${activeTab === 'vesting' ? 'bg-white text-black border-white font-bold shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'bg-white/[0.03] text-zinc-400 border-white/[0.08] hover:bg-white/[0.06]'}`}
           >
             Linear Vesting
-            <Info size={14} className={activeTab === 'vesting' ? 'text-zinc-500' : 'text-[#555566]'} onClick={(e) => { e.stopPropagation(); setOpenInfo(openInfo === 'vesting' ? null : 'vesting'); }} />
+            <Info size={14} className={activeTab === 'vesting' ? 'text-zinc-500' : 'text-zinc-500'} onClick={(e) => { e.stopPropagation(); setOpenInfo(openInfo === 'vesting' ? null : 'vesting'); }} />
           </button>
           {openInfo === 'vesting' && (
             <InfoPopup title="Linear Vesting" description="Tokens unlock gradually over time. You can claim unlocked tokens at any time after the cliff period." className="top-full left-0 mt-2" onClose={() => setOpenInfo(null)} />
@@ -416,7 +416,7 @@ export default function CreatePage() {
         <div className="flex-1 w-full space-y-6">
 
           {/* 1. NETWORK */}
-          <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6">
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-white font-medium text-lg font-sans">1. Network</h2>
             </div>
@@ -432,35 +432,35 @@ export default function CreatePage() {
                 <button
                   key={net.id}
                   onClick={() => handleNetworkSwitch(net.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${chain?.id === net.id ? 'bg-[#1C1C26] border-white/20' : 'bg-transparent border-[#1C1C26] hover:border-white/10 opacity-60 hover:opacity-100'}`}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${chain?.id === net.id ? 'bg-white/[0.08] border-white/20' : 'bg-transparent border-white/[0.08] hover:border-white/10 opacity-60 hover:opacity-100'}`}
                 >
                   <div className={`w-1.5 h-1.5 rounded-full ${net.color}`}></div>
-                  <span className={`font-mono text-[10px] uppercase tracking-widest ${chain?.id === net.id ? 'text-white' : 'text-[#8B8B9E]'}`}>{net.name}</span>
+                  <span className={`font-mono text-[10px] uppercase tracking-widest ${chain?.id === net.id ? 'text-white' : 'text-zinc-400'}`}>{net.name}</span>
                 </button>
               ))}
             </div>
           </div>
 
           {/* 2. TOKEN AMOUNT */}
-          <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6">
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-white font-medium text-lg font-sans">2. Token Amount</h2>
             </div>
             <div className="space-y-5">
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-[#555566] uppercase tracking-widest">Token Address</label>
+                <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Token Address</label>
                 <input
                   type="text" placeholder="0x..."
-                  className={`w-full bg-[#0B0B0F] border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isInvalidAddress ? 'border-red-500/50 focus:border-red-500' : 'border-[#1C1C26] focus:border-purple-500/50'}`}
+                  className={`w-full bg-black/30 border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isInvalidAddress ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.08] focus:border-purple-500/50'}`}
                   value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value)}
                 />
                 {isInvalidAddress && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest mt-1">Invalid ERC-20 Address</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-[#555566] uppercase tracking-widest">Amount</label>
+                <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Amount</label>
                 <input
                   type="number" placeholder="1,000"
-                  className={`w-full bg-[#0B0B0F] border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isInvalidAmount ? 'border-red-500/50 focus:border-red-500' : 'border-[#1C1C26] focus:border-purple-500/50'}`}
+                  className={`w-full bg-black/30 border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isInvalidAmount ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.08] focus:border-purple-500/50'}`}
                   value={amount} onChange={(e) => setAmount(e.target.value)}
                 />
                 {isInvalidAmount && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest mt-1">Amount must be greater than 0</p>}
@@ -470,7 +470,7 @@ export default function CreatePage() {
           </div>
 
           {/* 3. DURATION */}
-          <div className="bg-[#13131A] border border-[#1C1C26] rounded-2xl p-6">
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-white font-medium text-lg font-sans">3. Duration</h2>
             </div>
@@ -480,36 +480,36 @@ export default function CreatePage() {
                 <div className="relative">
                   <input
                     type="datetime-local"
-                    className={`w-full bg-[#0B0B0F] border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isTimeParadox ? 'border-red-500/50 focus:border-red-500' : 'border-[#1C1C26] focus:border-purple-500/50'}`}
+                    className={`w-full bg-black/30 border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isTimeParadox ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.08] focus:border-purple-500/50'}`}
                     value={unlockDate} onChange={(e) => setUnlockDate(e.target.value)}
                   />
-                  <Calendar className="absolute right-4 top-4 text-[#555566] pointer-events-none" size={20} />
+                  <Calendar className="absolute right-4 top-4 text-zinc-500 pointer-events-none" size={20} />
                 </div>
                 {isTimeParadox && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest mt-1">Unlock date must be in the future</p>}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-mono text-[#555566] uppercase tracking-widest">Vesting (Days)</label>
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Vesting (Days)</label>
                   <div className="relative">
                     <input
                       type="number" placeholder="365"
-                      className={`w-full bg-[#0B0B0F] border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isInvalidDuration ? 'border-red-500/50 focus:border-red-500' : 'border-[#1C1C26] focus:border-purple-500/50'}`}
+                      className={`w-full bg-black/30 border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isInvalidDuration ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.08] focus:border-purple-500/50'}`}
                       value={vestingDays} onChange={(e) => setVestingDays(e.target.value)}
                     />
-                    <Clock className="absolute right-4 top-4 text-[#555566] pointer-events-none" size={20} />
+                    <Clock className="absolute right-4 top-4 text-zinc-500 pointer-events-none" size={20} />
                   </div>
                   {isInvalidDuration && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest mt-1">Must be at least 1 day</p>}
                 </div>
                 <div className="space-y-2 relative">
-                  <label className="text-[10px] font-mono text-[#555566] uppercase tracking-widest">Cliff (Days) — Optional</label>
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Cliff (Days) — Optional</label>
                   <div className="relative">
                     <input
                       type="number" placeholder="0"
-                      className={`w-full bg-[#0B0B0F] border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isInvalidCliff || isCliffTooLong ? 'border-red-500/50 focus:border-red-500' : 'border-[#1C1C26] focus:border-purple-500/50'}`}
+                      className={`w-full bg-black/30 border rounded-xl p-4 text-white focus:outline-none font-mono transition-colors text-sm ${isInvalidCliff || isCliffTooLong ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.08] focus:border-purple-500/50'}`}
                       value={cliffDays} onChange={(e) => setCliffDays(e.target.value)}
                     />
-                    <Hourglass className="absolute right-4 top-4 text-[#555566] pointer-events-none" size={20} />
+                    <Hourglass className="absolute right-4 top-4 text-zinc-500 pointer-events-none" size={20} />
                   </div>
                   {isInvalidCliff   && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest mt-1">Cannot be negative</p>}
                   {isCliffTooLong   && <p className="text-red-400 text-[10px] font-mono uppercase tracking-widest mt-1">Cliff must be shorter than vesting duration</p>}
@@ -521,39 +521,39 @@ export default function CreatePage() {
 
         {/* RIGHT COLUMN */}
         <div className="w-full lg:w-[380px] flex flex-col gap-6 shrink-0 sticky top-24">
-          <div className="bg-gradient-to-b from-[#13131A] to-[#0B0B0F] border border-[#1C1C26] rounded-2xl p-6">
-            <h3 className="text-[#8B8B9E] font-mono text-xs uppercase tracking-widest mb-6">
+          <div className="bg-gradient-to-b from-white/[0.03] to-transparent border border-white/[0.08] rounded-2xl p-6">
+            <h3 className="text-zinc-400 font-mono text-xs uppercase tracking-widest mb-6">
               {activeTab === 'lock' ? 'Lock Summary' : 'Vesting Summary'}
             </h3>
 
             <div className="space-y-5 mb-8">
               <div className="flex justify-between items-end">
-                <span className="text-xs text-[#555566] font-sans">Asset</span>
+                <span className="text-xs text-zinc-500 font-sans">Asset</span>
                 <span className="text-white font-bold text-lg font-sans">{displaySymbol}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-[#555566] font-sans">Quantity</span>
+                <span className="text-xs text-zinc-500 font-sans">Quantity</span>
                 <span className="text-white font-mono text-sm">{amount || "0.00"}</span>
               </div>
               {activeTab === 'lock' ? (
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#555566] font-sans">Unlock Date</span>
+                  <span className="text-xs text-zinc-500 font-sans">Unlock Date</span>
                   <span className="text-white font-mono text-sm">{unlockDate ? new Date(unlockDate).toLocaleDateString() : "--"}</span>
                 </div>
               ) : (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#555566] font-sans">Cliff Duration</span>
+                    <span className="text-xs text-zinc-500 font-sans">Cliff Duration</span>
                     <span className="text-white font-mono text-sm">{cliffDays ? `${cliffDays} Days` : "--"}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#555566] font-sans">Vesting Duration</span>
+                    <span className="text-xs text-zinc-500 font-sans">Vesting Duration</span>
                     <span className="text-white font-mono text-sm">{vestingDays ? `${vestingDays} Days` : "--"}</span>
                   </div>
                 </>
               )}
               <div className="flex justify-between items-center pt-4 border-t border-white/5">
-                <span className="text-xs text-[#555566] font-sans">Service Fee</span>
+                <span className="text-xs text-zinc-500 font-sans">Service Fee</span>
                 <span className="text-blue-400 font-mono text-sm">{feeAmount} ETH</span>
               </div>
             </div>
@@ -574,7 +574,7 @@ export default function CreatePage() {
               <button
                 onClick={handleLock}
                 disabled={needsApproval || !isInputValid || isBusy || !feeReady || insufficientBalance}
-                className={`w-full flex items-center justify-center gap-2 ${!needsApproval && isInputValid ? 'btn-primary py-4 text-sm' : 'bg-[#1A1A24] text-[#555566] font-mono text-sm py-4 rounded-xl cursor-not-allowed transition-all border border-transparent'}`}
+                className={`w-full flex items-center justify-center gap-2 ${!needsApproval && isInputValid ? 'btn-primary py-4 text-sm' : 'bg-white/[0.05] text-zinc-500 font-mono text-sm py-4 rounded-xl cursor-not-allowed transition-all border border-transparent'}`}
               >
                 {actionType === 'lock' && isBusy ? (
                   <><Loader2 className="animate-spin" size={16} />{isTxConfirming ? "Securing..." : "Signing..."}</>
